@@ -1,4 +1,4 @@
-import _ from "lodash";
+import isEmpty from "lodash/isEmpty.js";
 import type {
     ConnectedContext,
     ConnectingContext,
@@ -15,7 +15,7 @@ import type {
     UnsubscribedContext,
 } from "centrifuge";
 import {Centrifuge} from 'centrifuge';
-import {Centrifuge as ProtobufCentrifuge} from 'centrifuge/build/protobuf';
+import type {Centrifuge as ProtobufCentrifuge} from 'centrifuge/build/protobuf';
 import {Console} from "@/_internal/utils/Console";
 import {WebSocketKit} from "@/_chimera/longConnection/WebSocketKit";
 import {SseKit} from "@/_chimera/longConnection/SseKit";
@@ -27,6 +27,7 @@ import {CentrifugeKit} from "@/_chimera/longConnection/CentrifugeKit";
 
 export class CentrifugeClient {
     private static client: Centrifuge | ProtobufCentrifuge | null = null;
+    private static connectionAttempt = 0;
 
     static debug: boolean = LocalStorageUtil.getCentrifugeDebug();
     static protocol: string = LocalStorageUtil.getCentrifugeProtocol();
@@ -38,36 +39,62 @@ export class CentrifugeClient {
 
     static async connect(endpoints: Array<TransportEndpoint>) {
         this.disconnect(false);
+        const attempt = this.connectionAttempt;
+        const {debug, protocol, secret, channel} = this;
+        const transportEndpoints = endpoints.map(endpoint => ({...endpoint}));
 
-        if (_.isEmpty(endpoints)) {
+        if (isEmpty(transportEndpoints)) {
             alert(`You need at least one valid TransportEndpoint!`);
             return;
         }
-        if (_.isEmpty(this.secret)) {
+        if (isEmpty(secret)) {
             alert("secret is empty!");
             return;
         }
-        if (_.isEmpty(this.channel)) {
+        if (isEmpty(channel)) {
             alert("channel is empty!");
             return;
         }
         let user: string = this.user;
-        if (_.isEmpty(user)) {
+        if (isEmpty(user)) {
             user = UuidKit.v4();
         }
 
-        let connectToken = await CentrifugeKit.genToken({}, "HS256", this.secret, "24h", user);
-        let subToken = await CentrifugeKit.genSubToken({}, "HS256", this.secret, "24h", user, this.channel);
+        let connectToken: string;
+        let subToken: string;
+        let Client: typeof Centrifuge | typeof ProtobufCentrifuge = Centrifuge;
+        try {
+            connectToken = await CentrifugeKit.genToken({}, "HS256", secret, "24h", user);
+            if (attempt !== this.connectionAttempt) {
+                return;
+            }
+            subToken = await CentrifugeKit.genSubToken({}, "HS256", secret, "24h", user, channel);
+            if (attempt !== this.connectionAttempt) {
+                return;
+            }
+            if (protocol === "protobuf") {
+                Client = (await import('centrifuge/build/protobuf')).Centrifuge;
+                if (attempt !== this.connectionAttempt) {
+                    return;
+                }
+            }
+        } catch (error) {
+            if (attempt === this.connectionAttempt) {
+                console.error("Failed to prepare Centrifuge connection", error);
+                Console.println(`[client-error] ${error instanceof Error ? error.message : String(error)}`);
+            }
+            return;
+        }
         Console.println(`user: [${user}]`);
-        Console.println(`channel: [${this.channel}]`);
-        Console.println(`secret: [${this.secret}]`);
+        Console.println(`channel: [${channel}]`);
+        Console.println(`secret: [${secret}]`);
         Console.println(`token: [${connectToken}]`);
         Console.println(`subToken: [${subToken}]`);
-        let emulationEndpoint = this.getEmulationEndpoint(endpoints);
+        let emulationEndpoint = this.getEmulationEndpoint(transportEndpoints);
         Console.println(`emulation endpoint: "${emulationEndpoint}"`);
 
         let opts: Partial<Options> = {
-            debug: this.debug,
+            debug: debug,
             token: connectToken,
             data: null,
             emulationEndpoint: emulationEndpoint,
@@ -86,21 +113,27 @@ export class CentrifugeClient {
             timeout: 1000 * 30,
         };
 
-        if (this.isProtobuf()) {
-            this.client = new ProtobufCentrifuge(endpoints, opts);
-        } else {
-            this.client = new Centrifuge(endpoints, opts);
-        }
+        const client = new Client(transportEndpoints, opts);
+        this.client = client;
         // this.client.setToken("<token>");
         this.client.on('connecting', function (ctx: ConnectingContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("ConnectingContext", ctx);
             Console.println(`[client-connecting] code: ${ctx.code}, reason: ${ctx.reason}`);
         });
         this.client.on('connected', function (ctx: ConnectedContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("ConnectedContext", ctx);
             Console.println(`+++ [client-connected] client: ${ctx.client}, transport: ${ctx.transport}`);
         });
         this.client.on('disconnected', function (ctx: DisconnectedContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("DisconnectedContext", ctx);
             Console.println(`--- [client-disconnected] code: ${ctx.code}, reason: ${ctx.reason}`);
 
@@ -108,34 +141,52 @@ export class CentrifugeClient {
             CentrifugeClient.client = null;
         });
         this.client.on('error', function (ctx: ErrorContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("ErrorContext", ctx);
             Console.println(`[ERROR] type: ${ctx.type}, transport: ${ctx.transport}, error.code: ${ctx.error.code}, error.message: ${ctx.error.message}`);
         });
 
-        let sub = this.client.newSubscription(this.channel, {
+        let sub = this.client.newSubscription(channel, {
             token: subToken,
         });
         sub.on("subscribing", function (ctx: SubscribingContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("SubscribingContext", ctx);
 
             Console.println(`[订阅ing] code: ${ctx.code}, reason: ${ctx.reason}`);
         });
         sub.on("subscribed", function (ctx: SubscribedContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("SubscribedContext", ctx);
 
             Console.println(`[订阅成功] channel: ${ctx.channel}`);
         });
         sub.on("unsubscribed", function (ctx: UnsubscribedContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("UnsubscribedContext", ctx);
 
             Console.println(`--- [sub-unsubscribed] channel: ${ctx.channel}, code: ${ctx.code}, reason: ${ctx.reason}`);
         });
         sub.on("error", function (ctx: SubscriptionErrorContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("SubscriptionErrorContext", ctx);
 
             Console.println(`--- [sub-error] channel: ${ctx.channel}, type: ${ctx.type}, error.code: ${ctx.error.code}, error.message: ${ctx.error.message}`);
         });
         sub.on("publication", function (ctx: PublicationContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("PublicationContext", ctx);
 
             if (typeof ctx.data === "string") {
@@ -149,11 +200,17 @@ export class CentrifugeClient {
             Console.println(`[sub-publication] channel: ${ctx.channel}, content(object): ${JSON.stringify(ctx.data)}`);
         });
         sub.on("join", function (ctx: JoinContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("JoinContext", ctx);
 
             Console.println(`[sub-join] channel: ${ctx.channel}, info.user: ${ctx.info.user}, info.client: ${ctx.info.client}`);
         });
         sub.on("leave", function (ctx: LeaveContext) {
+            if (CentrifugeClient.client !== client) {
+                return;
+            }
             console.log("LeaveContext", ctx);
 
             Console.println(`[sub-leave] channel: ${ctx.channel}, info.user: ${ctx.info.user}, info.client: ${ctx.info.client}`);
@@ -175,6 +232,7 @@ export class CentrifugeClient {
     }
 
     static disconnect(alertFlag: boolean = true) {
+        this.connectionAttempt++;
         if (this.client == null) {
             if (alertFlag) {
                 alert("No connection now!");
@@ -204,11 +262,11 @@ export class CentrifugeClient {
             data: any;
 
         /* 取值 */
-        if (_.isEmpty(this.rpcMethod)) {
+        if (isEmpty(this.rpcMethod)) {
             alert("rpc method is empty!");
             return;
         }
-        if (_.isEmpty(this.rpcData)) {
+        if (isEmpty(this.rpcData)) {
             alert("rpc data is empty!");
             return;
         }

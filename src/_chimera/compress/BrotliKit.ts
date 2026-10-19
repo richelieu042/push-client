@@ -1,4 +1,3 @@
-import {decompress} from "brotli/decompress";
 import {Uint8ArrayKit} from "@/_chimera/type/Uint8ArrayKit";
 import {BlobKit} from "@/_chimera/type/BlobKit";
 import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
@@ -8,6 +7,7 @@ import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
  */
 export class BrotliKit {
     static async decompress(compressed: Uint8Array | ArrayBuffer | Blob) {
+        const {decompress} = await import("brotli/decompress");
         if (compressed instanceof Blob) {
             let ua = await BlobKit.toUint8Array(compressed);
             return decompress(ua);

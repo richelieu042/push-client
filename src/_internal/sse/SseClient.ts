@@ -8,23 +8,39 @@ export class SseClient {
     private static client: EventSource | null = null;
 
     static connect(url: string, pushType: number) {
-        this.disconnect();
-
         if (!SseKit.checkUrl(url)) {
             alert(`SSE url(${url}) is invalid!`);
             return;
         }
+        const messageType = Number(pushType);
+        if (messageType !== 0 && messageType !== 1) {
+            alert(`SSE pushType(${pushType}) is invalid`);
+            return;
+        }
+        this.disconnect();
         LocalStorageUtil.setSseUrl(url);
 
-        this.client = new EventSource(url);
-        this.client.addEventListener('test', function (e) {
-            SseClient.handle(pushType, e.origin, e.lastEventId, e.type, e.data);
-        }, false);
-        this.client.onmessage = function (e) {
-            SseClient.handle(pushType, e.origin, e.lastEventId, e.type, e.data);
+        let client: EventSource;
+        try {
+            client = new EventSource(url);
+        } catch (error) {
+            Console.println(`[SSE] connect error: ${String(error)}`);
+            return;
+        }
+        this.client = client;
+        const onMessage = (event: MessageEvent) => {
+            if (this.client !== client) return;
+            try {
+                SseClient.handle(messageType, event.origin, event.lastEventId, event.type, event.data);
+            } catch (error) {
+                Console.println(`[SSE] message error: ${String(error)}`);
+            }
         };
+        client.addEventListener('test', onMessage, false);
+        client.onmessage = onMessage;
         // 如果发生通信错误（比如连接中断），就会触发error事件
-        this.client.onerror = function (event) {
+        client.onerror = (event) => {
+            if (this.client !== client) return;
             Console.println("onerror");
             console.error(event);
         };
@@ -35,8 +51,11 @@ export class SseClient {
             return;
         }
 
-        this.client.close();
+        const client = this.client;
         this.client = null;
+        client.onmessage = null;
+        client.onerror = null;
+        client.close();
     }
 
     private static handle(pushType: number, origin: string, id: string, event: string, data: any) {

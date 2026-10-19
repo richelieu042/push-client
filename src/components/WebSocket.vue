@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {WebSocketClient} from "@/_internal/ws/WebSocketClient";
-import {onMounted, ref, watch} from 'vue';
+import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import {Console} from "@/_internal/utils/Console";
 import {Key} from "@/_internal/consts/key";
@@ -22,6 +22,8 @@ onMounted(() => {
   Console.println(`[WebSocket] initial push message type: ${initialPushMessageType}`);
 });
 
+onBeforeUnmount(() => WebSocketClient.disconnect(true));
+
 function connect(event: Event) {
   WebSocketClient.connect(url.value, Number(pushMessageType.value));
 }
@@ -39,8 +41,8 @@ function send(event: Event) {
   <div>
     ws push type:
     <select v-model="pushMessageType">
-      <option value="0">text || binary(no compress) || binary(gzip)</option>
-      <option value="1">binary(brotli)</option>
+      <option :value="0">text || binary(no compress) || binary(gzip)</option>
+      <option :value="1">binary(brotli)</option>
     </select>
   </div>
   <div>

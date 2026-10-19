@@ -2,7 +2,8 @@ import {type Ref} from "vue";
 import {TimeKit} from "@/_chimera/time/TimeKit";
 
 export class Console {
-    private static outputTextarea: Ref<string>;
+    static readonly maxOutputLength = 200_000;
+    private static outputTextarea: Ref<string> | undefined;
 
     static initialize(output: Ref<string>) {
         this.outputTextarea = output;
@@ -11,12 +12,16 @@ export class Console {
     static println(text: string) {
         let str: string = `${TimeKit.getCurrentTimeString()} ${text}\n`;
 
-        this.outputTextarea.value += str;
+        if (this.outputTextarea) {
+            this.outputTextarea.value = (this.outputTextarea.value + str).slice(-this.maxOutputLength);
+        }
         console.log(str);
     }
 
     static clear() {
-        this.outputTextarea.value = "";
+        if (this.outputTextarea) {
+            this.outputTextarea.value = "";
+        }
     }
 
 }

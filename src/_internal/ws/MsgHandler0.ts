@@ -8,27 +8,29 @@ import {BlobKit} from "@/_chimera/type/BlobKit";
  */
 export class MsgHandler0 {
     static async handle(data: ArrayBuffer | Blob | string) {
+        Console.println(await this.decode(data));
+    }
+
+    static async decode(data: ArrayBuffer | Blob | string): Promise<string> {
         if (typeof data === "string") {
-            Console.println(`on message(text): ${data}`);
-            return;
+            return `on message(text): ${data}`;
         }
 
         if (data instanceof ArrayBuffer) {
             if (await GzipKit.isGzipCompressed(data)) {
                 let msg = await GzipKit.decompressToString(data);
-                Console.println(`on message(binary ArrayBuffer, gzip): ${msg}`);
-                return;
+                return `on message(binary ArrayBuffer, gzip): ${msg}`;
             }
             let msg = ArrayBufferKit.toString(data);
-            Console.println(`on message(binary ArrayBuffer, no compress): ${msg}`);
+            return `on message(binary ArrayBuffer, no compress): ${msg}`;
         } else {
-            if (await GzipKit.isGzipCompressed(data)) {
-                let msg = await GzipKit.decompressToString(data);
-                Console.println(`on message(binary Blob, gzip): ${msg}`);
-                return;
+            const buffer = await BlobKit.toArrayBuffer(data);
+            if (await GzipKit.isGzipCompressed(buffer)) {
+                let msg = await GzipKit.decompressToString(buffer);
+                return `on message(binary Blob, gzip): ${msg}`;
             }
-            let msg = await BlobKit.toString(data);
-            Console.println(`on message(binary Blob, no compress): ${msg}`);
+            let msg = ArrayBufferKit.toString(buffer);
+            return `on message(binary Blob, no compress): ${msg}`;
         }
     }
 

@@ -5,6 +5,6 @@ export class MsgHandlerBase64 {
     static handle(origin: string, id: string, event: string, data: any) {
         let text:string = Base64Kit.decodeStringToString(data);
 
-        Console.println(`onmessage(raw): origin(${origin}), id(${id}), event(${event}), text(${text})`);
+        Console.println(`onmessage(base64): origin(${origin}), id(${id}), event(${event}), text(${text})`);
     }
 }

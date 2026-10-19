@@ -1,11 +1,18 @@
-import _ from "lodash";
-
 export class WebSocketKit {
     /*
      * @return false: 不通过
      */
     static checkUrl(url: string): boolean {
-        return _.startsWith(url, "ws://") || _.startsWith(url, "wss://")
+        if (typeof url !== "string" || (!url.startsWith("ws://") && !url.startsWith("wss://"))) {
+            return false;
+        }
+        try {
+            const parsed = new URL(url);
+            return (parsed.protocol === "ws:" || parsed.protocol === "wss:")
+                && parsed.hostname.length > 0 && !url.includes('#');
+        } catch {
+            return false;
+        }
     }
 
 }

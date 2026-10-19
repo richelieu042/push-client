@@ -8,6 +8,7 @@
     "npm": ">=10"
   },
   "scripts": {
+    "test": "node --import ./tests/register.mjs --test tests/*.test.mjs",
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",

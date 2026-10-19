@@ -1,4 +1,4 @@
-import _ from "lodash";
+import isEmpty from "lodash/isEmpty.js";
 import {Console} from "@/_internal/utils/Console";
 import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import {MsgHandler0} from "@/_internal/ws/MsgHandler0";
@@ -9,46 +9,63 @@ export class WebSocketClient {
     private static client: WebSocket | null = null;
 
     static connect(url: string, pushType: number) {
-        this.disconnect();
-
         if (!WebSocketKit.checkUrl(url)) {
             alert(`WebSocket url(${url}) is invalid!`);
             return;
         }
+        const messageType = Number(pushType);
+        if (messageType !== 0 && messageType !== 1) {
+            alert(`Unknown ws push type(${pushType})!`);
+            return;
+        }
+        this.disconnect(true);
         LocalStorageUtil.setWsUrl(url);
 
-        this.client = new WebSocket(url);
-        this.client.binaryType = "blob"; // "arraybuffer" 或者 "blob"
-        this.client.onopen = function () {
-            Console.println("onopen")
+        let client: WebSocket;
+        try {
+            client = new WebSocket(url);
+        } catch (error) {
+            Console.println(`[WebSocket] connect error: ${String(error)}`);
+            return;
+        }
+        this.client = client;
+        client.binaryType = "blob";
+        let messages = Promise.resolve();
+        client.onopen = () => {
+            if (this.client === client) Console.println("onopen");
         };
-        this.client.onmessage = async function (e) {
-            let data = e.data;
-
-            switch (pushType) {
-                case 0:
-                    await MsgHandler0.handle(data);
-                    break;
-                case 1:
-                    await MsgHandler1.handle(data);
-                    break;
-                default:
-                    alert(`Unknown ws push type(${pushType})!`);
-                    return;
-            }
+        client.onmessage = (event) => {
+            messages = messages.then(async () => {
+                if (this.client !== client) return;
+                const message = await (messageType === 0
+                    ? MsgHandler0.decode(event.data)
+                    : MsgHandler1.decode(event.data));
+                if (this.client === client) Console.println(message);
+            }).catch(error => {
+                if (this.client === client) {
+                    Console.println(`[WebSocket] message error: ${String(error)}`);
+                }
+            });
+            return messages;
         };
-        this.client.onerror = function (e) {
+        client.onerror = (event) => {
+            if (this.client !== client) return;
             Console.println("onerror");
-            console.error(e);
+            console.error(event);
         };
-        this.client.onclose = function (e) {
-            Console.println(`onclose: code(${e.code}), reason(${e.reason}), wasClean(${e.wasClean})`);
-            console.error(e);
+        client.onclose = (event) => {
+            // Finish decoding already received messages before reporting a remote close.
+            messages = messages.then(() => {
+                if (this.client !== client) return;
+                Console.println(`onclose: code(${event.code}), reason(${event.reason}), wasClean(${event.wasClean})`);
+                this.client = null;
+            });
+            return messages;
         };
     }
 
     static send(messageText: string) {
-        if (_.isEmpty(messageText)) {
+        if (isEmpty(messageText)) {
             alert("Message is empty!");
             return
         }
@@ -61,13 +78,22 @@ export class WebSocketClient {
         Console.println(`send a message: ${messageText}`)
     }
 
-    static disconnect() {
+    static disconnect(silent: boolean = false) {
         if (this.client == null) {
             return;
         }
 
-        this.client.close();
+        const client = this.client;
         this.client = null;
+        client.onopen = null;
+        client.onmessage = null;
+        client.onerror = null;
+        client.onclose = silent ? null : event => {
+            if (this.client === null) {
+                Console.println(`onclose: code(${event.code}), reason(${event.reason}), wasClean(${event.wasClean})`);
+            }
+        };
+        client.close();
     }
 
 }

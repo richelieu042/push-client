@@ -33,4 +33,12 @@ npm run dev
 npm run build
 ```
 
+### Run Regression Tests
+```sh
+npm test
+```
+
+Connection views and compression libraries load on demand. Switching views closes the previous
+connection, and the output keeps the most recent 200,000 characters to keep long-running sessions responsive.
+
 

@@ -8,7 +8,7 @@ export class LocalStorageUtil {
 
     // 默认返回0
     static getConnectionType(): number {
-        return Number(LocalStorageKit.get(Key.ConnectionType));
+        return this.getOption(Key.ConnectionType, [0, 1, 2]);
     }
 
     /*
@@ -36,7 +36,7 @@ export class LocalStorageUtil {
      * WebSocket 默认返回0
      */
     static getWsPushMessageType(): number {
-        return Number(LocalStorageKit.get(Key.WsPushMessageType));
+        return this.getOption(Key.WsPushMessageType, [0, 1]);
     }
 
     /*
@@ -64,7 +64,12 @@ export class LocalStorageUtil {
      * SSE 默认返回0
      */
     static getSsePushMessageType(): number {
-        return Number(LocalStorageKit.get(Key.SsePushMessageType));
+        return this.getOption(Key.SsePushMessageType, [0, 1]);
+    }
+
+    private static getOption(key: string, allowed: number[]): number {
+        const value = Number(LocalStorageKit.get(key));
+        return allowed.includes(value) ? value : 0;
     }
 
     /*

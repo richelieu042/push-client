@@ -6,18 +6,20 @@ import {BrotliKit} from "@/_chimera/compress/BrotliKit";
  */
 export class MsgHandler1 {
     static async handle(data: ArrayBuffer | Blob | string) {
+        Console.println(await this.decode(data));
+    }
+
+    static async decode(data: ArrayBuffer | Blob | string): Promise<string> {
         if (typeof data === "string") {
-            Console.println(`on message(text): ${data}`);
-            return;
+            return `on message(text): ${data}`;
         }
 
         if (data instanceof ArrayBuffer) {
             let msg = await BrotliKit.decompressToString(data);
-            Console.println(`on message(binary ArrayBuffer, brotli): ${msg}`);
-            return;
+            return `on message(binary ArrayBuffer, brotli): ${msg}`;
         }
         let msg = await BrotliKit.decompressToString(data);
-        Console.println(`on message(binary Blob, brotli): ${msg}`);
+        return `on message(binary Blob, brotli): ${msg}`;
     }
 
 }

@@ -1,7 +1,8 @@
+const decoder = new TextDecoder('utf-8');
+
 export class ArrayBufferKit {
     static toString(ab: ArrayBuffer): string {
-        let decoder = new TextDecoder('utf-8');
-        return  decoder.decode(ab);
+        return decoder.decode(ab);
     }
 
     // ArrayBuffer => Uint8Array

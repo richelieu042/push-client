@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import _ from "lodash";
-import {ref, watch} from 'vue';
+import isEmpty from "lodash/isEmpty.js";
+import {onBeforeUnmount, ref, watch} from 'vue';
 import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import type {TransportEndpoint, TransportName} from "centrifuge";
 import {CentrifugeClient} from "@/_internal/centrifuge/CentrifugeClient";
@@ -12,6 +12,10 @@ let alternative0Type = ref(LocalStorageUtil.getCentrifugeAlternative0Type()),
     alternative1Url = ref(LocalStorageUtil.getCentrifugeAlternative1Url()),
     alternative2Type = ref(LocalStorageUtil.getCentrifugeAlternative2Type()),
     alternative2Url = ref(LocalStorageUtil.getCentrifugeAlternative2Url());
+
+onBeforeUnmount(() => {
+  CentrifugeClient.disconnect(false);
+});
 
 watch(alternative0Type, (newVal, oldVal) => {
   CentrifugeClient.disconnect(false);
@@ -84,7 +88,7 @@ async function connect(event: Event) {
   let endpoints: TransportEndpoint[] = [];
 
   /* alternative 0 */
-  if (!_.isEmpty(alternative0Type.value) && !_.isEmpty(alternative0Url.value)) {
+  if (!isEmpty(alternative0Type.value) && !isEmpty(alternative0Url.value)) {
     if (!CentrifugeClient.checkUrl(alternative0Url.value)) {
       alert(`invalid alternative0Url: ${alternative0Url.value}`);
       return;
@@ -95,7 +99,7 @@ async function connect(event: Event) {
     });
   }
   /* alternative 1 */
-  if (!_.isEmpty(alternative1Type.value) && !_.isEmpty(alternative1Url.value)) {
+  if (!isEmpty(alternative1Type.value) && !isEmpty(alternative1Url.value)) {
     if (!CentrifugeClient.checkUrl(alternative1Url.value)) {
       alert(`invalid alternative1Url: ${alternative1Url.value}`);
       return;
@@ -106,7 +110,7 @@ async function connect(event: Event) {
     });
   }
   /* alternative 2 */
-  if (!_.isEmpty(alternative2Type.value) && !_.isEmpty(alternative2Url.value)) {
+  if (!isEmpty(alternative2Type.value) && !isEmpty(alternative2Url.value)) {
     if (!CentrifugeClient.checkUrl(alternative2Url.value)) {
       alert(`invalid alternative2Url: ${alternative2Url.value}`);
       return;
@@ -133,8 +137,8 @@ function sendRPC(event: Event) {
   <div>
     debug:
     <select v-model="CentrifugeClient.debug" class="margin-left" @change="debugChange">
-      <option value="false">false</option>
-      <option value="true">true</option>
+      <option :value="false">false</option>
+      <option :value="true">true</option>
     </select>
     <br>
 

@@ -2,32 +2,12 @@ import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
 
 export class BlobKit {
     static toString(blob: Blob): Promise<string> {
-        return new Promise((resolve, reject) => {
-            let reader = new FileReader();
-
-            reader.onload = () => {
-                resolve(reader.result as string);
-            };
-            reader.onerror = () => {
-                reject(reader.error);
-            };
-            reader.readAsText(blob, 'UTF-8');
-        });
+        return blob.text();
     }
 
     // Blob => ArrayBuffer
     static toArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
-        return new Promise((resolve, reject) => {
-            let reader = new FileReader();
-
-            reader.onload = () => {
-                resolve(reader.result as ArrayBuffer);
-            };
-            reader.onerror = () => {
-                reject(reader.error);
-            };
-            reader.readAsArrayBuffer(blob);
-        });
+        return blob.arrayBuffer();
     }
 
     static async toUint8Array(blob: Blob) {
