@@ -4,6 +4,7 @@ import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import type {TransportEndpoint, TransportName} from "centrifuge";
 import {CentrifugeClient} from "@/_internal/centrifuge/CentrifugeClient";
 import {Console} from "@/_internal/utils/Console";
+import {submitOnEnter} from "@/_internal/utils/Keyboard";
 
 const transports: TransportName[] = ["websocket", "sse", "http_stream"];
 const alternatives = ref([
@@ -112,14 +113,14 @@ function sendRPC() {
 <template>
   <div>
     debug:
-    <select v-model="CentrifugeClient.debug" class="margin-left" @change="debugChange">
+    <select v-model="CentrifugeClient.debug" class="margin-left" aria-label="Centrifuge debug" @change="debugChange">
       <option :value="false">false</option>
       <option :value="true">true</option>
     </select>
     <br>
 
     protocol:
-    <select v-model="CentrifugeClient.protocol" class="margin-left" @change="protocolChange">
+    <select v-model="CentrifugeClient.protocol" class="margin-left" aria-label="Centrifuge protocol" @change="protocolChange">
       <option value="json">JSON</option>
       <option value="protobuf">Protobuf binary</option>
     </select>
@@ -127,19 +128,19 @@ function sendRPC() {
 
     token_hmac_secret_key:
     <input v-model="CentrifugeClient.secret" class="margin-left text-input" placeholder="mustn't be empty"
-           type="text"
+           type="text" aria-label="Centrifuge token secret" spellcheck="false" autocapitalize="off"
            @blur="secretBlur">
     <br>
 
     user:
     <input v-model="CentrifugeClient.user" class="margin-left text-input" placeholder="use UUIDv4 if empty"
-           type="text"
+           type="text" aria-label="Centrifuge user" spellcheck="false" autocapitalize="off"
            @blur="userBlur">
     <br>
 
     channel:
     <input v-model="CentrifugeClient.channel" class="margin-left text-input" placeholder="mustn't be empty"
-           type="text"
+           type="text" aria-label="Centrifuge channel" spellcheck="false" autocapitalize="off"
            @blur="channelBlur">
   </div>
 
@@ -152,6 +153,7 @@ function sendRPC() {
         <option v-for="transport in transports" :key="transport" :value="transport">{{ transport }}</option>
       </select>
       <input v-model="alternative.url" type="text" :aria-label="`alternative${index} URL`"
+             spellcheck="false" autocapitalize="off" @keydown="submitOnEnter($event, connect)"
              @blur="alternative.saveUrl(alternative.url)">
     </div>
   </div>
@@ -163,11 +165,13 @@ function sendRPC() {
 
   <div>
     rpc method:
-    <input v-model="CentrifugeClient.rpcMethod" class="margin-left text-input" type="text"
+    <input v-model="CentrifugeClient.rpcMethod" class="margin-left text-input" type="text" aria-label="RPC method"
+           spellcheck="false" autocapitalize="off"
            @change="rpcMethodChanged">
     <br>
     rpc data(json string):
-    <input v-model="CentrifugeClient.rpcData" class="margin-left text-input" type="text"
+    <input v-model="CentrifugeClient.rpcData" class="margin-left text-input" type="text" aria-label="RPC JSON data"
+           spellcheck="false" autocapitalize="off"
            @change="rpcDataChanged">
     <br>
     <button @click="sendRPC">Send RPC</button>

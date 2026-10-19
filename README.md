@@ -39,12 +39,25 @@ npm test
 ```
 
 Connection views and compression libraries load on demand. Switching views closes the previous
-connection, and the output keeps the most recent 200,000 characters to keep long-running sessions responsive.
+connection. Output is refreshed at most once per animation frame and keeps the most recent 200,000
+characters. Pending output is also bounded while background tabs suspend animation frames.
+Clear also discards logs waiting to be displayed.
 
 URLs are trimmed before connecting. Centrifuge endpoints are validated against the selected transport,
 and the normalized URLs are saved for the next session. Connection attempts and pending RPC responses
 are isolated so a previous connection cannot overwrite the current output.
 
+WebSocket receive backlog is limited to 1,000 messages or 8 MiB, including a message being decoded.
+Exceeding either limit reports an error, discards pending messages, and closes the connection.
+Sending is refused when the message would take the browser's outgoing buffer above 8 MiB;
+retry after the connection catches up. Normal remote closure finishes displaying already received messages.
+
+Centrifuge connection and subscription JWTs renew automatically when the server requests a refresh.
+Renewal uses the settings from the active connection. Invalid configuration or token preparation failure
+preserves the current connection. Replaced clients release their global network listeners.
+URL fields also accept Enter to connect, and URL schemes are case insensitive.
+
 Regression tests cover connection cleanup and failures, concurrent connections, JSON/Protobuf RPC,
-message ordering, UTF-8 and compression decoding, error logging, and unavailable browser storage.
+message ordering and backpressure, token refresh, UTF-8 and compression decoding, batched error logging,
+URL validation, and unavailable browser storage.
 They use local mocks and do not require a running push server.

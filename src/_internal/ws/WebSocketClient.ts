@@ -6,8 +6,13 @@ import {MsgHandler1} from "@/_internal/ws/MsgHandler1";
 import {WebSocketKit} from "@/_chimera/longConnection/WebSocketKit";
 
 export class WebSocketClient {
+    static readonly maxPendingMessageCount = 1_000;
+    static readonly maxPendingMessageBytes = 8 * 1024 * 1024;
+    static readonly maxBufferedSendBytes = 8 * 1024 * 1024;
+
     private static client: WebSocket | null = null;
     private static connectionAttempt = 0;
+    private static stopMessages: (() => void) | null = null;
 
     static connect(url: string, pushType: number) {
         url = url.trim();
@@ -32,20 +37,61 @@ export class WebSocketClient {
         }
         this.client = client;
         client.binaryType = "blob";
-        let messages = Promise.resolve();
+        const queue: {data: string | ArrayBuffer | Blob; bytes: number}[] = [];
+        let pendingBytes = 0;
+        let decoding = false;
+        let stopped = false;
+        let accepting = true;
+        let messages: Promise<void> | null = null;
+        const stopMessages = () => {
+            stopped = true;
+            accepting = false;
+            queue.length = 0;
+            pendingBytes = 0;
+            if (this.stopMessages === stopMessages) this.stopMessages = null;
+        };
+        this.stopMessages = stopMessages;
         client.onopen = () => {
             if (this.client === client) Console.println("onopen");
         };
         client.onmessage = (event) => {
-            messages = messages.then(async () => {
-                if (this.client !== client) return;
-                const message = await (messageType === 0
-                    ? MsgHandler0.decode(event.data)
-                    : MsgHandler1.decode(event.data));
-                if (this.client === client) Console.println(message);
-            }).catch(error => {
-                Console.error(`[WebSocket] Failed to decode message from "${url}"`, error, this.client === client);
-            });
+            if (this.client !== client || !accepting) return;
+            const data: string | ArrayBuffer | Blob = event.data;
+            // Strings occupy UTF-16 memory; binary payloads expose their retained byte size.
+            const bytes = typeof data === "string" ? data.length * 2
+                : data instanceof Blob ? data.size : data.byteLength;
+            const count = queue.length + (decoding ? 1 : 0);
+            if (count >= this.maxPendingMessageCount || bytes > this.maxPendingMessageBytes - pendingBytes) {
+                Console.error(`[WebSocket] Receive backlog exceeded at "${url}"; connection closed`,
+                    new Error(`Pending: ${count} messages, ${pendingBytes} bytes; incoming: ${bytes} bytes; limits: ${this.maxPendingMessageCount} messages, ${this.maxPendingMessageBytes} bytes. Pending messages were discarded.`));
+                this.disconnect(true);
+                return messages;
+            }
+            queue.push({data, bytes});
+            pendingBytes += bytes;
+            if (!messages) {
+                messages = Promise.resolve().then(async () => {
+                    try {
+                        while (!stopped && queue.length > 0) {
+                            const next = queue.shift()!;
+                            decoding = true;
+                            try {
+                                const message = await (messageType === 0
+                                    ? MsgHandler0.decode(next.data)
+                                    : MsgHandler1.decode(next.data));
+                                if (this.client === client) Console.println(message);
+                            } catch (error) {
+                                Console.error(`[WebSocket] Failed to decode message from "${url}"`, error, this.client === client);
+                            } finally {
+                                decoding = false;
+                                pendingBytes = Math.max(0, pendingBytes - next.bytes);
+                            }
+                        }
+                    } finally {
+                        messages = null;
+                    }
+                });
+            }
             return messages;
         };
         client.onerror = (event) => {
@@ -54,12 +100,17 @@ export class WebSocketClient {
         };
         client.onclose = (event) => {
             // Finish decoding already received messages before reporting a remote close.
-            messages = messages.then(() => {
+            accepting = false;
+            return (messages ?? Promise.resolve()).then(() => {
                 if (this.client !== client) return;
                 Console.println(`onclose: code(${event.code}), reason(${event.reason}), wasClean(${event.wasClean})`);
                 this.client = null;
+                stopMessages();
+                client.onopen = null;
+                client.onmessage = null;
+                client.onerror = null;
+                client.onclose = null;
             });
-            return messages;
         };
     }
 
@@ -75,6 +126,12 @@ export class WebSocketClient {
         }
 
         try {
+            const bytes = new Blob([messageText]).size;
+            if (bytes > this.maxBufferedSendBytes - client.bufferedAmount) {
+                Console.error(`[WebSocket] Send buffer limit exceeded at "${client.url}"; message was not sent`,
+                    new Error(`Buffered: ${client.bufferedAmount} bytes; message: ${bytes} bytes; limit: ${this.maxBufferedSendBytes} bytes. Retry after the connection catches up.`));
+                return;
+            }
             client.send(messageText);
             Console.println(`send a message: ${messageText}`);
         } catch (error) {
@@ -84,6 +141,7 @@ export class WebSocketClient {
 
     static disconnect(silent: boolean = false) {
         const attempt = ++this.connectionAttempt;
+        this.stopMessages?.();
         if (this.client == null) {
             return;
         }

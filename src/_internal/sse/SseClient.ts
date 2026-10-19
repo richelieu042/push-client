@@ -6,6 +6,7 @@ import {SseKit} from "@/_chimera/longConnection/SseKit";
 
 export class SseClient {
     private static client: EventSource | null = null;
+    private static detachListeners: (() => void) | null = null;
 
     static connect(url: string, pushType: number) {
         url = url.trim();
@@ -39,10 +40,21 @@ export class SseClient {
         };
         client.addEventListener('test', onMessage, false);
         client.onmessage = onMessage;
+        client.onopen = () => {
+            if (this.client === client) Console.println("onopen");
+        };
+        this.detachListeners = () => {
+            client.removeEventListener('test', onMessage, false);
+            client.onmessage = null;
+            client.onopen = null;
+            client.onerror = null;
+        };
         // 如果发生通信错误（比如连接中断），就会触发error事件
         client.onerror = (event) => {
             if (this.client !== client) return;
-            Console.error(`[SSE] Connection error at "${url}"`, event);
+            const closed = client.readyState === EventSource.CLOSED;
+            Console.error(`[SSE] Connection error at "${url}" (${closed ? 'closed' : 'reconnecting'})`, event);
+            if (closed) this.disconnect();
         };
     }
 
@@ -53,8 +65,8 @@ export class SseClient {
 
         const client = this.client;
         this.client = null;
-        client.onmessage = null;
-        client.onerror = null;
+        this.detachListeners?.();
+        this.detachListeners = null;
         try {
             client.close();
         } catch (error) {

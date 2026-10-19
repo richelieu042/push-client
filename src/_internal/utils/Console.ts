@@ -4,9 +4,18 @@ import {TimeKit} from "@/_chimera/time/TimeKit";
 export class Console {
     static readonly maxOutputLength = 200_000;
     private static outputTextarea: Ref<string> | undefined;
+    private static pendingOutput = "";
+    private static outputFrame: number | undefined;
 
     static initialize(output: Ref<string>) {
+        this.cancelPendingOutput();
         this.outputTextarea = output;
+        return () => {
+            if (this.outputTextarea === output) {
+                this.cancelPendingOutput();
+                this.outputTextarea = undefined;
+            }
+        };
     }
 
     static println(text: string) {
@@ -16,19 +25,49 @@ export class Console {
     }
 
     static error(context: string, error: unknown, showInOutput: boolean = true) {
-        const str = `${TimeKit.getCurrentTimeString()} ${context}: ${this.formatError(error)}\n`;
-        if (showInOutput) {
-            this.appendOutput(str);
+        if (!showInOutput) {
+            console.error(`${TimeKit.getCurrentTimeString()} ${context}`, error);
+            return;
         }
+        const str = `${TimeKit.getCurrentTimeString()} ${context}: ${this.formatError(error)}\n`;
+        this.appendOutput(str);
         console.error(str, error);
     }
 
     private static appendOutput(text: string) {
-        if (this.outputTextarea) {
-            this.outputTextarea.value = text.length >= this.maxOutputLength
-                ? text.slice(-this.maxOutputLength)
-                : this.outputTextarea.value.slice(-(this.maxOutputLength - text.length)) + text;
+        if (!this.outputTextarea) {
+            return;
         }
+        this.pendingOutput = this.appendBounded(this.pendingOutput, text);
+        if (typeof requestAnimationFrame !== "function") {
+            this.flushOutput();
+        } else if (this.outputFrame === undefined) {
+            this.outputFrame = requestAnimationFrame(() => {
+                this.outputFrame = undefined;
+                this.flushOutput();
+            });
+        }
+    }
+
+    private static appendBounded(previous: string, text: string): string {
+        return text.length >= this.maxOutputLength
+            ? text.slice(-this.maxOutputLength)
+            : previous.slice(-(this.maxOutputLength - text.length)) + text;
+    }
+
+    private static flushOutput() {
+        if (this.outputTextarea && this.pendingOutput) {
+            this.outputTextarea.value = this.appendBounded(this.outputTextarea.value, this.pendingOutput);
+        }
+        this.pendingOutput = "";
+    }
+
+    private static cancelPendingOutput() {
+        if (this.outputFrame !== undefined) {
+            cancelAnimationFrame(this.outputFrame);
+            this.outputFrame = undefined;
+        }
+        this.pendingOutput = "";
     }
 
     private static formatError(error: unknown): string {
@@ -59,6 +98,7 @@ export class Console {
     }
 
     static clear() {
+        this.cancelPendingOutput();
         if (this.outputTextarea) {
             this.outputTextarea.value = "";
         }

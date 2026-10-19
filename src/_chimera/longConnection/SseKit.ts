@@ -3,7 +3,7 @@ export class SseKit {
      * @return false: 不通过
      */
     static checkUrl(url: string): boolean {
-        if (typeof url !== "string" || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+        if (typeof url !== "string" || !/^https?:\/\//i.test(url)) {
             return false;
         }
         try {

@@ -4,6 +4,7 @@ import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import {Console} from "@/_internal/utils/Console";
 import {Key} from "@/_internal/consts/key";
 import {SseClient} from "@/_internal/sse/SseClient";
+import {submitOnEnter} from "@/_internal/utils/Keyboard";
 
 const initialUrl = LocalStorageUtil.getSseUrl();
 const initialPushMessageType = LocalStorageUtil.getSsePushMessageType();
@@ -36,7 +37,7 @@ function disconnect() {
 <template>
   <div>
     sse push type:
-    <select v-model="pushMessageType">
+    <select v-model="pushMessageType" aria-label="SSE push type">
       <option :value="0">raw</option>
       <option :value="1">base64</option>
     </select>
@@ -44,7 +45,8 @@ function disconnect() {
   <div>
     sse url:
     <br>
-    <input v-model="url" class="wide-input" type="text" placeholder="以 http:// 或 https:// 开头...">
+    <input v-model="url" class="wide-input" type="text" aria-label="SSE URL"
+           spellcheck="false" autocapitalize="off" placeholder="以 http:// 或 https:// 开头..." @keydown="submitOnEnter($event, connect)">
     <br>
     <button @click="connect">Connect</button>
     <button class="margin-left" @click="disconnect">Disconnect</button>

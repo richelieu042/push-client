@@ -10,13 +10,9 @@ export class JwtKit {
      *
      * @param alg e.g."HS256"
      */
-    static sign(payload: any, alg: string, secret: string, expirationTime: string) {
-        if (!payload) {
-            payload = {};
-        }
-
+    static sign(payload: jose.JWTPayload | null, alg: string, secret: string, expirationTime: string) {
         const secretUA = new TextEncoder().encode(secret)
-        return new jose.SignJWT(payload)
+        return new jose.SignJWT(payload ?? {})
             .setProtectedHeader({
                 alg: alg,
                 typ: "JWT",
@@ -26,14 +22,6 @@ export class JwtKit {
             // .setAudience('urn:example:audience')
             .setExpirationTime(expirationTime)
             .sign(secretUA);
-
-        //     return new jose.SignJWT({'urn:example:claim': true})
-        //         .setProtectedHeader({alg})
-        //         .setIssuedAt()
-        //         .setIssuer('urn:example:issuer')
-        //         .setAudience('urn:example:audience')
-        //         .setExpirationTime('2h')
-        //         .sign(secretUA);
     }
 
 }

@@ -68,8 +68,8 @@ export class LocalStorageUtil {
     }
 
     private static getOption(key: string, allowed: number[]): number {
-        const value = Number(LocalStorageKit.get(key));
-        return allowed.includes(value) ? value : 0;
+        const value = LocalStorageKit.get(key);
+        return allowed.find(option => String(option) === value) ?? 0;
     }
 
     /*

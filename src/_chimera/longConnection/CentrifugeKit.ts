@@ -1,4 +1,5 @@
 import {JwtKit} from "@/_chimera/jwt/JwtKit";
+import type {JWTPayload} from "jose";
 
 export class CentrifugeKit {
     /*
@@ -6,14 +7,8 @@ export class CentrifugeKit {
      *
      * @param alg e.g."HS256"
      */
-    static genToken(payload: any, alg: string, secret: string, expirationTime: string, user: string) {
-        if (!payload) {
-            payload = {}
-        }
-        payload.sub = user;
-        // payload.exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24;
-
-        return JwtKit.sign(payload, alg, secret, expirationTime);
+    static genToken(payload: JWTPayload | null, alg: string, secret: string, expirationTime: string, user: string) {
+        return JwtKit.sign({...payload, sub: user}, alg, secret, expirationTime);
     }
 
     /*
@@ -21,15 +16,8 @@ export class CentrifugeKit {
      *
      * @param alg e.g."HS256"
      */
-    static genSubToken(payload: any, alg: string, secret: string, expirationTime: string, user: string, channel: string) {
-        if (!payload) {
-            payload = {}
-        }
-        payload.sub = user;
-        payload.channel = channel;
-        // payload.exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24;
-
-        return JwtKit.sign(payload, alg, secret, expirationTime);
+    static genSubToken(payload: JWTPayload | null, alg: string, secret: string, expirationTime: string, user: string, channel: string) {
+        return JwtKit.sign({...payload, sub: user, channel}, alg, secret, expirationTime);
     }
 
 }

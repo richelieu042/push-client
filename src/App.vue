@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {defineAsyncComponent, ref, watch} from 'vue';
+import {defineAsyncComponent, onBeforeUnmount, ref, watch} from 'vue';
 import {Console} from "@/_internal/utils/Console";
 import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import {Key} from "@/_internal/consts/key";
@@ -10,7 +10,8 @@ const Centrifuge = defineAsyncComponent(() => import("@/components/Centrifuge.vu
 
 /* Console */
 const output = ref("");
-Console.initialize(output);
+const disposeConsole = Console.initialize(output);
+onBeforeUnmount(disposeConsole);
 
 function clear() {
   Console.clear();
@@ -28,7 +29,7 @@ watch(connectionType, (newVal, oldVal) => {
 <template>
   <div>
     type of long connection:
-    <select v-model="connectionType">
+    <select v-model="connectionType" aria-label="Connection type">
       <option :value="0">WebSocket</option>
       <option :value="1">SSE</option>
       <option :value="2">Centrifuge</option>
@@ -37,7 +38,7 @@ watch(connectionType, (newVal, oldVal) => {
   <div>
     output:
     <br>
-    <textarea :value="output" class="console-output" readonly></textarea>
+    <textarea :value="output" class="console-output" aria-label="Connection output" readonly spellcheck="false"></textarea>
     <br>
     <button @click="clear">Clear</button>
   </div>

@@ -3,7 +3,7 @@ export class WebSocketKit {
      * @return false: 不通过
      */
     static checkUrl(url: string): boolean {
-        if (typeof url !== "string" || (!url.startsWith("ws://") && !url.startsWith("wss://"))) {
+        if (typeof url !== "string" || !/^wss?:\/\//i.test(url)) {
             return false;
         }
         try {
