@@ -24,8 +24,7 @@ export class SseClient {
         try {
             client = new EventSource(url);
         } catch (error) {
-            console.error(`[SSE] Failed to connect to "${url}"`, error);
-            Console.println(`[SSE] connect error: ${String(error)}`);
+            Console.error(`[SSE] Failed to connect to "${url}"`, error);
             return;
         }
         this.client = client;
@@ -34,8 +33,7 @@ export class SseClient {
             try {
                 SseClient.handle(messageType, event.origin, event.lastEventId, event.type, event.data);
             } catch (error) {
-                console.error(`[SSE] Failed to handle message from "${url}" (type: ${event.type}, id: ${event.lastEventId})`, error);
-                Console.println(`[SSE] message error: ${String(error)}`);
+                Console.error(`[SSE] Failed to handle message from "${url}" (type: ${event.type}, id: ${event.lastEventId})`, error);
             }
         };
         client.addEventListener('test', onMessage, false);
@@ -43,8 +41,7 @@ export class SseClient {
         // 如果发生通信错误（比如连接中断），就会触发error事件
         client.onerror = (event) => {
             if (this.client !== client) return;
-            Console.println("onerror");
-            console.error(event);
+            Console.error(`[SSE] Connection error at "${url}"`, event);
         };
     }
 

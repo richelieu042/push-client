@@ -79,10 +79,7 @@ export class CentrifugeClient {
                 }
             }
         } catch (error) {
-            console.error(`Failed to prepare Centrifuge connection (attempt: ${attempt})`, error);
-            if (attempt === this.connectionAttempt) {
-                Console.println(`[client-error] ${error instanceof Error ? error.message : String(error)}`);
-            }
+            Console.error(`[client-error] Failed to prepare Centrifuge connection (attempt: ${attempt})`, error, attempt === this.connectionAttempt);
             return;
         }
         Console.println(`user: [${user}]`);
@@ -273,8 +270,7 @@ export class CentrifugeClient {
         try {
             data = JSON.parse(this.rpcData)
         } catch (error) {
-            console.error(`[rpc] Failed to parse data for method "${method}"`, error);
-            Console.println(`[rpc] invalid JSON data: ${String(error)}`);
+            Console.error(`[rpc] Invalid JSON data for method "${method}"`, error);
             alert("rpc data is a json string!");
             return;
         }
@@ -306,8 +302,7 @@ export class CentrifugeClient {
             }
             Console.println(`[rpc] response: ${JSON.stringify(response)}`);
         } catch (err) {
-            console.error(`[rpc] Method "${method}" failed`, err);
-            Console.println(`[rpc] error: ${err instanceof Error ? String(err) : JSON.stringify(err)}`);
+            Console.error(`[rpc] Method "${method}" failed`, err);
         }
 
         /* 获取返回值的方法2 */
