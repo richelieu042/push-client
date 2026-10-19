@@ -1,26 +1,26 @@
-import pako from "pako";
+import {inflate, ungzip} from "pako";
 import {Uint8ArrayKit} from "@/_chimera/type/Uint8ArrayKit";
 import {BlobKit} from "@/_chimera/type/BlobKit";
 import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
 
 /*
- * 需要安装第三方库，命令: npm install @types/pako pako
+ * 需要安装第三方库，命令: npm install pako
  */
 export class GzipKit {
     static async decompress(compressed: Uint8Array | ArrayBuffer | Blob) {
         if (compressed instanceof Blob) {
             let ab = await BlobKit.toArrayBuffer(compressed)
-            return pako.inflate(ab);
+            return inflate(ab);
         }
-        return pako.inflate(compressed);
+        return inflate(compressed);
     }
 
     static async decompressToString(compressed: Uint8Array | ArrayBuffer| Blob) {
         if (compressed instanceof Blob) {
             let ab = await BlobKit.toArrayBuffer(compressed)
-            return pako.ungzip(ab, { to: 'string' });
+            return ungzip(ab, { toText: true });
         }
-        return pako.ungzip(compressed, { to: 'string' });
+        return ungzip(compressed, { toText: true });
     }
 
     /*

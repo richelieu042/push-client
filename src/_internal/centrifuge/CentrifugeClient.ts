@@ -109,7 +109,7 @@ export class CentrifugeClient {
         });
         this.client.on('error', function (ctx: ErrorContext) {
             console.log("ErrorContext", ctx);
-            Console.println(`--- [client-error] type: ${ctx.type}, transport: ${ctx.transport}, error.code: ${ctx.error.code}, error.message: ${ctx.error.message}`);
+            Console.println(`[ERROR] type: ${ctx.type}, transport: ${ctx.transport}, error.code: ${ctx.error.code}, error.message: ${ctx.error.message}`);
         });
 
         let sub = this.client.newSubscription(this.channel, {
@@ -118,12 +118,12 @@ export class CentrifugeClient {
         sub.on("subscribing", function (ctx: SubscribingContext) {
             console.log("SubscribingContext", ctx);
 
-            Console.println(`[sub-subscribing] code: ${ctx.code}, reason: ${ctx.reason}`);
+            Console.println(`[订阅ing] code: ${ctx.code}, reason: ${ctx.reason}`);
         });
         sub.on("subscribed", function (ctx: SubscribedContext) {
             console.log("SubscribedContext", ctx);
 
-            Console.println(`+++ [sub-subscribed] channel: ${ctx.channel}`);
+            Console.println(`[订阅成功] channel: ${ctx.channel}`);
         });
         sub.on("unsubscribed", function (ctx: UnsubscribedContext) {
             console.log("UnsubscribedContext", ctx);

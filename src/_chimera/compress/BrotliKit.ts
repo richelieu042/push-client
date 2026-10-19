@@ -1,10 +1,10 @@
-import decompress from "brotli/decompress";
+import {decompress} from "brotli/decompress";
 import {Uint8ArrayKit} from "@/_chimera/type/Uint8ArrayKit";
 import {BlobKit} from "@/_chimera/type/BlobKit";
 import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
 
 /*
- * 需要安装第三方库，命令: npm install @types/brotli brotli
+ * 需要安装第三方库，命令: npm install brotli
  */
 export class BrotliKit {
     static async decompress(compressed: Uint8Array | ArrayBuffer | Blob) {
