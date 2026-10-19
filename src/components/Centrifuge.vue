@@ -83,6 +83,10 @@ function alternative2UrlBlur() {
 }
 
 async function connect(event: Event) {
+  alternative0Url.value = alternative0Url.value.trim();
+  alternative1Url.value = alternative1Url.value.trim();
+  alternative2Url.value = alternative2Url.value.trim();
+
   Console.clear();
 
   let endpoints: TransportEndpoint[] = [];
