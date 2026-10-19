@@ -24,6 +24,7 @@ export class SseClient {
         try {
             client = new EventSource(url);
         } catch (error) {
+            console.error(`[SSE] Failed to connect to "${url}"`, error);
             Console.println(`[SSE] connect error: ${String(error)}`);
             return;
         }
@@ -33,6 +34,7 @@ export class SseClient {
             try {
                 SseClient.handle(messageType, event.origin, event.lastEventId, event.type, event.data);
             } catch (error) {
+                console.error(`[SSE] Failed to handle message from "${url}" (type: ${event.type}, id: ${event.lastEventId})`, error);
                 Console.println(`[SSE] message error: ${String(error)}`);
             }
         };

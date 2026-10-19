@@ -10,7 +10,8 @@ export class WebSocketKit {
             const parsed = new URL(url);
             return (parsed.protocol === "ws:" || parsed.protocol === "wss:")
                 && parsed.hostname.length > 0 && !url.includes('#');
-        } catch {
+        } catch (error) {
+            console.error(`[WebSocket] Failed to parse URL "${url}"`, error);
             return false;
         }
     }

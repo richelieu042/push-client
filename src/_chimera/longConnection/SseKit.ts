@@ -9,7 +9,8 @@ export class SseKit {
         try {
             const parsed = new URL(url);
             return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname.length > 0;
-        } catch {
+        } catch (error) {
+            console.error(`[SSE] Failed to parse URL "${url}"`, error);
             return false;
         }
     }

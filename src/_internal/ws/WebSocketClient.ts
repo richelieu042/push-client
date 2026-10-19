@@ -25,6 +25,7 @@ export class WebSocketClient {
         try {
             client = new WebSocket(url);
         } catch (error) {
+            console.error(`[WebSocket] Failed to connect to "${url}"`, error);
             Console.println(`[WebSocket] connect error: ${String(error)}`);
             return;
         }
@@ -42,6 +43,7 @@ export class WebSocketClient {
                     : MsgHandler1.decode(event.data));
                 if (this.client === client) Console.println(message);
             }).catch(error => {
+                console.error(`[WebSocket] Failed to decode message from "${url}"`, error);
                 if (this.client === client) {
                     Console.println(`[WebSocket] message error: ${String(error)}`);
                 }
