@@ -9,14 +9,14 @@ const SSE = defineAsyncComponent(() => import("@/components/SSE.vue"));
 const Centrifuge = defineAsyncComponent(() => import("@/components/Centrifuge.vue"));
 
 /* Console */
-let output = ref("");
+const output = ref("");
 Console.initialize(output);
 
-function clear(event: Event) {
+function clear() {
   Console.clear();
 }
 
-let connectionType = ref(LocalStorageUtil.getConnectionType());
+const connectionType = ref(LocalStorageUtil.getConnectionType());
 watch(connectionType, (newVal, oldVal) => {
   Console.clear();
 
@@ -37,9 +37,9 @@ watch(connectionType, (newVal, oldVal) => {
   <div>
     output:
     <br>
-    <textarea :value="output" readonly style="width: 1600px; height: 380px"></textarea>
+    <textarea :value="output" class="console-output" readonly></textarea>
     <br>
-    <button @click="clear($event)">Clear</button>
+    <button @click="clear">Clear</button>
   </div>
   <br>
 
@@ -54,5 +54,9 @@ watch(connectionType, (newVal, oldVal) => {
 </template>
 
 <style scoped>
-
+.console-output {
+  width: 100%;
+  max-width: 1600px;
+  height: 380px;
+}
 </style>

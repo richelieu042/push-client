@@ -10,3 +10,8 @@ input, textarea, select {
 input.margin-left, select.margin-left {
     max-width: calc(100% - 10px);
 }
+
+.wide-input {
+    width: 100%;
+    max-width: 1200px;
+}

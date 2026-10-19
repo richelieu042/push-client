@@ -25,7 +25,9 @@ export class Console {
 
     private static appendOutput(text: string) {
         if (this.outputTextarea) {
-            this.outputTextarea.value = (this.outputTextarea.value + text).slice(-this.maxOutputLength);
+            this.outputTextarea.value = text.length >= this.maxOutputLength
+                ? text.slice(-this.maxOutputLength)
+                : this.outputTextarea.value.slice(-(this.maxOutputLength - text.length)) + text;
         }
     }
 

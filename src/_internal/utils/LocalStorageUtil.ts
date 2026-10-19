@@ -90,7 +90,7 @@ export class LocalStorageUtil {
      * Centrifuge-Protocol
      */
     static getCentrifugeProtocol(): string {
-        return LocalStorageKit.get("Centrifuge-Protocol") || "json";
+        return LocalStorageKit.get("Centrifuge-Protocol") === "protobuf" ? "protobuf" : "json";
     }
 
     /*
@@ -146,7 +146,7 @@ export class LocalStorageUtil {
      * Centrifuge-Alternative0-Type
      */
     static getCentrifugeAlternative0Type(): string {
-        return LocalStorageKit.get("Centrifuge-Alternative0-Type") || "";
+        return this.getCentrifugeTransport("Centrifuge-Alternative0-Type");
     }
 
     /*
@@ -174,7 +174,7 @@ export class LocalStorageUtil {
      * Centrifuge-Alternative1-Type
      */
     static getCentrifugeAlternative1Type(): string {
-        return LocalStorageKit.get("Centrifuge-Alternative1-Type") || "";
+        return this.getCentrifugeTransport("Centrifuge-Alternative1-Type");
     }
 
     /*
@@ -202,7 +202,12 @@ export class LocalStorageUtil {
      * Centrifuge-Alternative2-Type
      */
     static getCentrifugeAlternative2Type(): string {
-        return LocalStorageKit.get("Centrifuge-Alternative2-Type") || "";
+        return this.getCentrifugeTransport("Centrifuge-Alternative2-Type");
+    }
+
+    private static getCentrifugeTransport(key: string): string {
+        const value = LocalStorageKit.get(key);
+        return ["websocket", "sse", "http_stream"].includes(value) ? value : "";
     }
 
     /*

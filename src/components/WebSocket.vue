@@ -5,12 +5,12 @@ import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import {Console} from "@/_internal/utils/Console";
 import {Key} from "@/_internal/consts/key";
 
-let initialUrl = LocalStorageUtil.getWsUrl(),
-    initialPushMessageType = LocalStorageUtil.getWsPushMessageType();
+const initialUrl = LocalStorageUtil.getWsUrl();
+const initialPushMessageType = LocalStorageUtil.getWsPushMessageType();
 
-let url = ref(initialUrl),
-    pushMessageType = ref(initialPushMessageType),
-    message = ref("");
+const url = ref(initialUrl);
+const pushMessageType = ref(initialPushMessageType);
+const message = ref("");
 
 watch(pushMessageType, (newVal, oldVal) => {
   Console.println(`${Key.WsPushMessageType} is changed: ${oldVal} -> ${newVal}`);
@@ -24,15 +24,16 @@ onMounted(() => {
 
 onBeforeUnmount(() => WebSocketClient.disconnect(true));
 
-function connect(event: Event) {
+function connect() {
+  url.value = url.value.trim();
   WebSocketClient.connect(url.value, Number(pushMessageType.value));
 }
 
-function disconnect(event: Event) {
+function disconnect() {
   WebSocketClient.disconnect();
 }
 
-function send(event: Event) {
+function send() {
   WebSocketClient.send(message.value);
 }
 </script>
@@ -48,23 +49,25 @@ function send(event: Event) {
   <div>
     ws url:
     <br>
-    <input v-model="url" type="text" style="width: 1200px" placeholder="以 ws:// 或 wss:// 开头...">
+    <input v-model="url" class="wide-input" type="text" placeholder="以 ws:// 或 wss:// 开头...">
     <br>
-    <button @click="connect($event)">Connect</button>
-    <button class="margin-left" @click="disconnect($event)">Disconnect</button>
+    <button @click="connect">Connect</button>
+    <button class="margin-left" @click="disconnect">Disconnect</button>
   </div>
 
   <br>
   <div>
     message:
     <br>
-    <textarea v-model="message" style="width: 1200px; height: 60px"></textarea>
+    <textarea v-model="message" class="wide-input message-input"></textarea>
     <br>
-    <button @click="send($event)">Send</button>
+    <button @click="send">Send</button>
   </div>
   <br>
 </template>
 
 <style scoped>
-
+.message-input {
+  height: 60px;
+}
 </style>

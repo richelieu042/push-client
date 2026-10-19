@@ -7,8 +7,10 @@ import {WebSocketKit} from "@/_chimera/longConnection/WebSocketKit";
 
 export class WebSocketClient {
     private static client: WebSocket | null = null;
+    private static connectionAttempt = 0;
 
     static connect(url: string, pushType: number) {
+        url = url.trim();
         if (!WebSocketKit.checkUrl(url)) {
             alert(`WebSocket url(${url}) is invalid!`);
             return;
@@ -66,16 +68,22 @@ export class WebSocketClient {
             alert("Message is empty!");
             return
         }
-        if (!this.client || this.client.readyState != WebSocket.OPEN) {
+        const client = this.client;
+        if (!client || client.readyState !== WebSocket.OPEN) {
             alert("WebSocket isn't ready!");
             return
         }
 
-        this.client.send(messageText);
-        Console.println(`send a message: ${messageText}`)
+        try {
+            client.send(messageText);
+            Console.println(`send a message: ${messageText}`);
+        } catch (error) {
+            Console.error(`[WebSocket] Failed to send message to "${client.url}"`, error, this.client === client);
+        }
     }
 
     static disconnect(silent: boolean = false) {
+        const attempt = ++this.connectionAttempt;
         if (this.client == null) {
             return;
         }
@@ -86,11 +94,15 @@ export class WebSocketClient {
         client.onmessage = null;
         client.onerror = null;
         client.onclose = silent ? null : event => {
-            if (this.client === null) {
+            if (this.connectionAttempt === attempt && this.client === null) {
                 Console.println(`onclose: code(${event.code}), reason(${event.reason}), wasClean(${event.wasClean})`);
             }
         };
-        client.close();
+        try {
+            client.close();
+        } catch (error) {
+            Console.error(`[WebSocket] Failed to close connection to "${client.url}"`, error, !silent);
+        }
     }
 
 }

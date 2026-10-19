@@ -1,52 +1,55 @@
 <script setup lang="ts">
-import isEmpty from "lodash/isEmpty.js";
 import {onBeforeUnmount, ref, watch} from 'vue';
 import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
 import type {TransportEndpoint, TransportName} from "centrifuge";
 import {CentrifugeClient} from "@/_internal/centrifuge/CentrifugeClient";
 import {Console} from "@/_internal/utils/Console";
 
-let alternative0Type = ref(LocalStorageUtil.getCentrifugeAlternative0Type()),
-    alternative0Url = ref(LocalStorageUtil.getCentrifugeAlternative0Url()),
-    alternative1Type = ref(LocalStorageUtil.getCentrifugeAlternative1Type()),
-    alternative1Url = ref(LocalStorageUtil.getCentrifugeAlternative1Url()),
-    alternative2Type = ref(LocalStorageUtil.getCentrifugeAlternative2Type()),
-    alternative2Url = ref(LocalStorageUtil.getCentrifugeAlternative2Url());
+const transports: TransportName[] = ["websocket", "sse", "http_stream"];
+const alternatives = ref([
+  {
+    type: LocalStorageUtil.getCentrifugeAlternative0Type(),
+    url: LocalStorageUtil.getCentrifugeAlternative0Url(),
+    saveType: LocalStorageUtil.setCentrifugeAlternative0Type,
+    saveUrl: LocalStorageUtil.setCentrifugeAlternative0Url,
+  },
+  {
+    type: LocalStorageUtil.getCentrifugeAlternative1Type(),
+    url: LocalStorageUtil.getCentrifugeAlternative1Url(),
+    saveType: LocalStorageUtil.setCentrifugeAlternative1Type,
+    saveUrl: LocalStorageUtil.setCentrifugeAlternative1Url,
+  },
+  {
+    type: LocalStorageUtil.getCentrifugeAlternative2Type(),
+    url: LocalStorageUtil.getCentrifugeAlternative2Url(),
+    saveType: LocalStorageUtil.setCentrifugeAlternative2Type,
+    saveUrl: LocalStorageUtil.setCentrifugeAlternative2Url,
+  },
+]);
 
 onBeforeUnmount(() => {
   CentrifugeClient.disconnect(false);
 });
 
-watch(alternative0Type, (newVal, oldVal) => {
+function resetConnection() {
   CentrifugeClient.disconnect(false);
   Console.clear();
+}
 
-  LocalStorageUtil.setCentrifugeAlternative0Type(newVal);
-});
-watch(alternative1Type, (newVal, oldVal) => {
-  CentrifugeClient.disconnect(false);
-  Console.clear();
-
-  LocalStorageUtil.setCentrifugeAlternative1Type(newVal);
-});
-watch(alternative2Type, (newVal, oldVal) => {
-  CentrifugeClient.disconnect(false);
-  Console.clear();
-
-  LocalStorageUtil.setCentrifugeAlternative2Type(newVal);
+alternatives.value.forEach(alternative => {
+  watch(() => alternative.type, value => {
+    resetConnection();
+    alternative.saveType(value);
+  });
 });
 
 function debugChange() {
-  CentrifugeClient.disconnect(false);
-  Console.clear();
-
+  resetConnection();
   LocalStorageUtil.setCentrifugeDebug(CentrifugeClient.debug);
 }
 
 function protocolChange() {
-  CentrifugeClient.disconnect(false);
-  Console.clear();
-
+  resetConnection();
   LocalStorageUtil.setCentrifugeProtocol(CentrifugeClient.protocol);
 }
 
@@ -70,70 +73,39 @@ function channelBlur() {
   LocalStorageUtil.setCentrifugeChannel(CentrifugeClient.channel);
 }
 
-function alternative0UrlBlur() {
-  LocalStorageUtil.setCentrifugeAlternative0Url(alternative0Url.value);
-}
-
-function alternative1UrlBlur() {
-  LocalStorageUtil.setCentrifugeAlternative1Url(alternative1Url.value);
-}
-
-function alternative2UrlBlur() {
-  LocalStorageUtil.setCentrifugeAlternative2Url(alternative2Url.value);
-}
-
-async function connect(event: Event) {
-  alternative0Url.value = alternative0Url.value.trim();
-  alternative1Url.value = alternative1Url.value.trim();
-  alternative2Url.value = alternative2Url.value.trim();
+async function connect() {
+  for (const alternative of alternatives.value) {
+    alternative.url = alternative.url.trim();
+    alternative.saveUrl(alternative.url);
+  }
 
   Console.clear();
 
-  let endpoints: TransportEndpoint[] = [];
-
-  /* alternative 0 */
-  if (!isEmpty(alternative0Type.value) && !isEmpty(alternative0Url.value)) {
-    if (!CentrifugeClient.checkUrl(alternative0Url.value)) {
-      alert(`invalid alternative0Url: ${alternative0Url.value}`);
+  const endpoints: TransportEndpoint[] = [];
+  for (const [index, alternative] of alternatives.value.entries()) {
+    if (!alternative.type || !alternative.url) {
+      continue;
+    }
+    const transport = transports.find(value => value === alternative.type);
+    if (!transport || !CentrifugeClient.checkUrl(alternative.url, transport)) {
+      alert(`invalid alternative${index}Url: ${alternative.url}`);
       return;
     }
     endpoints.push({
-      transport: alternative0Type.value as TransportName,
-      endpoint: alternative0Url.value
-    });
-  }
-  /* alternative 1 */
-  if (!isEmpty(alternative1Type.value) && !isEmpty(alternative1Url.value)) {
-    if (!CentrifugeClient.checkUrl(alternative1Url.value)) {
-      alert(`invalid alternative1Url: ${alternative1Url.value}`);
-      return;
-    }
-    endpoints.push({
-      transport: alternative1Type.value as TransportName,
-      endpoint: alternative1Url.value
-    });
-  }
-  /* alternative 2 */
-  if (!isEmpty(alternative2Type.value) && !isEmpty(alternative2Url.value)) {
-    if (!CentrifugeClient.checkUrl(alternative2Url.value)) {
-      alert(`invalid alternative2Url: ${alternative2Url.value}`);
-      return;
-    }
-    endpoints.push({
-      transport: alternative2Type.value as TransportName,
-      endpoint: alternative2Url.value
+      transport,
+      endpoint: alternative.url,
     });
   }
 
   await CentrifugeClient.connect(endpoints);
 }
 
-function disconnect(event: Event) {
+function disconnect() {
   CentrifugeClient.disconnect();
 }
 
-function sendRPC(event: Event) {
-  CentrifugeClient.rpc();
+function sendRPC() {
+  return CentrifugeClient.rpc();
 }
 </script>
 
@@ -154,77 +126,78 @@ function sendRPC(event: Event) {
     <br>
 
     token_hmac_secret_key:
-    <input v-model="CentrifugeClient.secret" class="margin-left" placeholder="mustn't be empty" style="width: 600px"
+    <input v-model="CentrifugeClient.secret" class="margin-left text-input" placeholder="mustn't be empty"
            type="text"
            @blur="secretBlur">
     <br>
 
     user:
-    <input v-model="CentrifugeClient.user" class="margin-left" placeholder="use UUIDv4 if empty" style="width: 600px"
+    <input v-model="CentrifugeClient.user" class="margin-left text-input" placeholder="use UUIDv4 if empty"
            type="text"
            @blur="userBlur">
     <br>
 
     channel:
-    <input v-model="CentrifugeClient.channel" class="margin-left" placeholder="mustn't be empty" style="width: 600px"
+    <input v-model="CentrifugeClient.channel" class="margin-left text-input" placeholder="mustn't be empty"
            type="text"
            @blur="channelBlur">
   </div>
 
-  <div>
+  <div class="transport-endpoints">
     TransportEndpoints(default endpoint of Bidirectional WebSocket: ws://localhost:8000/connection/websocket):
     <br>
-    <!-- 可选项0 -->
-    <div>
-      <select v-model="alternative0Type" style="width: 140px">
+    <div v-for="(alternative, index) in alternatives" :key="index" class="endpoint-row">
+      <select v-model="alternative.type" :aria-label="`alternative${index} type`">
         <option value="">null</option>
-        <option value="websocket">websocket</option>
-        <option value="sse">sse</option>
-        <option value="http_stream">http_stream</option>
+        <option v-for="transport in transports" :key="transport" :value="transport">{{ transport }}</option>
       </select>
-      <input v-model="alternative0Url" class="margin-left" style="width: 600px" type="text" @blur="alternative0UrlBlur">
-    </div>
-    <!-- 可选项1 -->
-    <div>
-      <select v-model="alternative1Type" style="width: 140px">
-        <option value="">null</option>
-        <option value="websocket">websocket</option>
-        <option value="sse">sse</option>
-        <option value="http_stream">http_stream</option>
-      </select>
-      <input v-model="alternative1Url" class="margin-left" style="width: 600px" type="text" @blur="alternative1UrlBlur">
-    </div>
-    <!-- 可选项2 -->
-    <div>
-      <select v-model="alternative2Type" style="width: 140px">
-        <option value="">null</option>
-        <option value="websocket">websocket</option>
-        <option value="sse">sse</option>
-        <option value="http_stream">http_stream</option>
-      </select>
-      <input v-model="alternative2Url" class="margin-left" style="width: 600px" type="text" @blur="alternative2UrlBlur">
+      <input v-model="alternative.url" type="text" :aria-label="`alternative${index} URL`"
+             @blur="alternative.saveUrl(alternative.url)">
     </div>
   </div>
   <div>
-    <button @click="connect($event)">Connect</button>
-    <button class="margin-left" @click="disconnect($event)">Disconnect</button>
+    <button @click="connect">Connect</button>
+    <button class="margin-left" @click="disconnect">Disconnect</button>
   </div>
   <br>
 
   <div>
     rpc method:
-    <input v-model="CentrifugeClient.rpcMethod" class="margin-left" style="width: 600px" type="text"
+    <input v-model="CentrifugeClient.rpcMethod" class="margin-left text-input" type="text"
            @change="rpcMethodChanged">
     <br>
     rpc data(json string):
-    <input v-model="CentrifugeClient.rpcData" class="margin-left" style="width: 600px" type="text"
+    <input v-model="CentrifugeClient.rpcData" class="margin-left text-input" type="text"
            @change="rpcDataChanged">
     <br>
-    <button @click="sendRPC($event)">Send RPC</button>
+    <button @click="sendRPC">Send RPC</button>
   </div>
   <br>
 </template>
 
 <style scoped>
+.text-input {
+  width: 600px;
+}
 
+.transport-endpoints {
+  overflow-wrap: anywhere;
+}
+
+.endpoint-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 750px;
+}
+
+.endpoint-row select {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.endpoint-row input {
+  flex: 1;
+  min-width: 0;
+}
 </style>

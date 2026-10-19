@@ -41,4 +41,10 @@ npm test
 Connection views and compression libraries load on demand. Switching views closes the previous
 connection, and the output keeps the most recent 200,000 characters to keep long-running sessions responsive.
 
+URLs are trimmed before connecting. Centrifuge endpoints are validated against the selected transport,
+and the normalized URLs are saved for the next session. Connection attempts and pending RPC responses
+are isolated so a previous connection cannot overwrite the current output.
 
+Regression tests cover connection cleanup and failures, concurrent connections, JSON/Protobuf RPC,
+message ordering, UTF-8 and compression decoding, error logging, and unavailable browser storage.
+They use local mocks and do not require a running push server.

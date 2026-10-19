@@ -8,6 +8,7 @@ export class SseClient {
     private static client: EventSource | null = null;
 
     static connect(url: string, pushType: number) {
+        url = url.trim();
         if (!SseKit.checkUrl(url)) {
             alert(`SSE url(${url}) is invalid!`);
             return;
@@ -54,7 +55,11 @@ export class SseClient {
         this.client = null;
         client.onmessage = null;
         client.onerror = null;
-        client.close();
+        try {
+            client.close();
+        } catch (error) {
+            Console.error(`[SSE] Failed to close connection to "${client.url}"`, error);
+        }
     }
 
     private static handle(pushType: number, origin: string, id: string, event: string, data: any) {
