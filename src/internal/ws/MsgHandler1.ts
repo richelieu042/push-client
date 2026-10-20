@@ -1,5 +1,5 @@
-import {Console} from "@/_internal/utils/Console";
-import {BrotliKit} from "@/_chimera/compress/BrotliKit";
+import {Console} from "@/internal/utils/Console";
+import {BrotliKit} from "@/chimera/compress/BrotliKit";
 
 /*
  * 后端推送消息的类型: binary(brotli)

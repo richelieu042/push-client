@@ -1,8 +1,8 @@
-import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
-import {Console} from "@/_internal/utils/Console";
-import {MsgHandlerRaw} from "@/_internal/sse/MsgHandlerRaw";
-import {MsgHandlerBase64} from "@/_internal/sse/MsgHandlerBase64";
-import {SseKit} from "@/_chimera/longConnection/SseKit";
+import {LocalStorageUtil} from "@/internal/utils/LocalStorageUtil";
+import {Console} from "@/internal/utils/Console";
+import {MsgHandlerRaw} from "@/internal/sse/MsgHandlerRaw";
+import {MsgHandlerBase64} from "@/internal/sse/MsgHandlerBase64";
+import {SseKit} from "@/chimera/longConnection/SseKit";
 
 export class SseClient {
     private static client: EventSource | null = null;

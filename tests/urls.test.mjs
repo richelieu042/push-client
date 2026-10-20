@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {SseKit} from '../src/_chimera/longConnection/SseKit.ts';
-import {WebSocketKit} from '../src/_chimera/longConnection/WebSocketKit.ts';
+import {SseKit} from '../src/chimera/longConnection/SseKit.ts';
+import {WebSocketKit} from '../src/chimera/longConnection/WebSocketKit.ts';
 
 test('URL validation accepts case insensitive schemes and browser supported host forms', () => {
     for (const [check, schemes] of [[SseKit.checkUrl, ['http', 'https', 'HTTP', 'HtTpS']], [WebSocketKit.checkUrl, ['ws', 'wss', 'WS', 'WsS']]]) {

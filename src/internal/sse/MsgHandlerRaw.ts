@@ -1,4 +1,4 @@
-import {Console} from "@/_internal/utils/Console";
+import {Console} from "@/internal/utils/Console";
 
 export class MsgHandlerRaw {
     static handle(origin: string, id: string, event: string, data: any) {

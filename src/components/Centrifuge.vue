@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import {onBeforeUnmount, ref, watch} from 'vue';
-import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
+import {LocalStorageUtil} from "@/internal/utils/LocalStorageUtil";
 import type {TransportEndpoint, TransportName} from "centrifuge";
-import {CentrifugeClient} from "@/_internal/centrifuge/CentrifugeClient";
-import {Console} from "@/_internal/utils/Console";
-import {submitOnEnter} from "@/_internal/utils/Keyboard";
+import {CentrifugeClient} from "@/internal/centrifuge/CentrifugeClient";
+import {Console} from "@/internal/utils/Console";
+import {submitOnEnter} from "@/internal/utils/Keyboard";
+import {HMAC_ALGORITHMS} from "@/internal/consts/jwt";
 
 const transports: TransportName[] = ["websocket", "sse", "http_stream"];
+let nextChannelId = 0;
+const channels = ref(CentrifugeClient.channels.map(value => ({id: nextChannelId++, value})));
+watch(channels, saveChannels, {deep: true});
+
 const alternatives = ref([
   {
     type: LocalStorageUtil.getCentrifugeAlternative0Type(),
@@ -54,6 +59,10 @@ function protocolChange() {
   LocalStorageUtil.setCentrifugeProtocol(CentrifugeClient.protocol);
 }
 
+function algorithmChange() {
+  LocalStorageUtil.setCentrifugeAlgorithm(CentrifugeClient.algorithm);
+}
+
 function rpcMethodChanged() {
   LocalStorageUtil.setCentrifugeRpcMethod(CentrifugeClient.rpcMethod);
 }
@@ -70,11 +79,23 @@ function userBlur() {
   LocalStorageUtil.setCentrifugeUser(CentrifugeClient.user);
 }
 
-function channelBlur() {
-  LocalStorageUtil.setCentrifugeChannel(CentrifugeClient.channel);
+function saveChannels() {
+  CentrifugeClient.channels = channels.value.map(channel => channel.value);
+  LocalStorageUtil.setCentrifugeChannels(CentrifugeClient.channels);
+}
+
+function addChannel() {
+  channels.value.push({id: nextChannelId++, value: ""});
+}
+
+function removeChannel(index: number) {
+  if (channels.value.length > 1) {
+    channels.value.splice(index, 1);
+  }
 }
 
 async function connect() {
+  saveChannels();
   for (const alternative of alternatives.value) {
     alternative.url = alternative.url.trim();
     alternative.saveUrl(alternative.url);
@@ -126,6 +147,12 @@ function sendRPC() {
     </select>
     <br>
 
+    token_algorithm:
+    <select v-model="CentrifugeClient.algorithm" class="margin-left" aria-label="Centrifuge token algorithm" @change="algorithmChange">
+      <option v-for="algorithm in HMAC_ALGORITHMS" :key="algorithm" :value="algorithm">{{ algorithm }}</option>
+    </select>
+    <br>
+
     token_hmac_secret_key:
     <input v-model="CentrifugeClient.secret" class="margin-left text-input" placeholder="mustn't be empty"
            type="text" aria-label="Centrifuge token secret" spellcheck="false" autocapitalize="off"
@@ -138,10 +165,20 @@ function sendRPC() {
            @blur="userBlur">
     <br>
 
-    channel:
-    <input v-model="CentrifugeClient.channel" class="margin-left text-input" placeholder="mustn't be empty"
-           type="text" aria-label="Centrifuge channel" spellcheck="false" autocapitalize="off"
-           @blur="channelBlur">
+    <div class="channels">
+      <div class="channel-heading">
+        channels:
+        <button type="button" @click="addChannel">Add channel</button>
+      </div>
+      <div v-for="(channel, index) in channels" :key="channel.id" class="channel-row">
+        <input v-model="channel.value" class="text-input" placeholder="channel name"
+               type="text" :aria-label="`Centrifuge channel ${index + 1}`" spellcheck="false" autocapitalize="off"
+               @keydown="submitOnEnter($event, connect)">
+        <button type="button" :disabled="channels.length === 1" :aria-label="`Remove channel ${index + 1}`"
+                @click="removeChannel(index)">Remove</button>
+      </div>
+      <small>Connect subscribes to all channels. Empty rows are ignored; duplicates are subscribed once.</small>
+    </div>
   </div>
 
   <div class="transport-endpoints">
@@ -182,6 +219,27 @@ function sendRPC() {
 <style scoped>
 .text-input {
   width: 600px;
+}
+
+.channel-heading,
+.channel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.channel-row {
+  max-width: 750px;
+}
+
+.channel-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-row button {
+  flex-shrink: 0;
 }
 
 .transport-endpoints {

@@ -1,9 +1,9 @@
 import isEmpty from "lodash/isEmpty.js";
-import {Console} from "@/_internal/utils/Console";
-import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
-import {MsgHandler0} from "@/_internal/ws/MsgHandler0";
-import {MsgHandler1} from "@/_internal/ws/MsgHandler1";
-import {WebSocketKit} from "@/_chimera/longConnection/WebSocketKit";
+import {Console} from "@/internal/utils/Console";
+import {LocalStorageUtil} from "@/internal/utils/LocalStorageUtil";
+import {MsgHandler0} from "@/internal/ws/MsgHandler0";
+import {MsgHandler1} from "@/internal/ws/MsgHandler1";
+import {WebSocketKit} from "@/chimera/longConnection/WebSocketKit";
 
 export class WebSocketClient {
     static readonly maxPendingMessageCount = 1_000;

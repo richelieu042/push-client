@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test, mock} from 'node:test';
-import {submitOnEnter} from '../src/_internal/utils/Keyboard.ts';
+import {submitOnEnter} from '../src/internal/utils/Keyboard.ts';
 
 test('Enter connects once and returns the async operation for Vue error handling', async () => {
     const result = Promise.resolve('connected');

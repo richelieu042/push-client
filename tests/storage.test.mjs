@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {LocalStorageKit} from '../src/_chimera/browser/LocalStorageKit.ts';
-import {LocalStorageUtil} from '../src/_internal/utils/LocalStorageUtil.ts';
+import {LocalStorageKit} from '../src/chimera/browser/LocalStorageKit.ts';
+import {LocalStorageUtil} from '../src/internal/utils/LocalStorageUtil.ts';
 
 function setupStorage(t) {
     const values = new Map();
@@ -42,6 +42,22 @@ test('stored numeric options accept only values produced by their setters', t =>
     }
 });
 
+test('Centrifuge signing algorithm persists supported values and defaults to HS256', t => {
+    const values = setupStorage(t);
+    assert.equal(LocalStorageUtil.getCentrifugeAlgorithm(), 'HS256');
+    for (const algorithm of ['HS256', 'HS384', 'HS512']) {
+        LocalStorageUtil.setCentrifugeAlgorithm(algorithm);
+        assert.equal(values.get('Centrifuge-Algorithm'), algorithm);
+        assert.equal(LocalStorageUtil.getCentrifugeAlgorithm(), algorithm);
+    }
+    for (const stored of ['', ' ', 'hs256', ' HS384 ', 'HS999', 'RS256', 'none', 'null']) {
+        values.set('Centrifuge-Algorithm', stored);
+        assert.equal(LocalStorageUtil.getCentrifugeAlgorithm(), 'HS256', JSON.stringify(stored));
+    }
+    values.delete('Centrifuge-Algorithm');
+    assert.equal(LocalStorageUtil.getCentrifugeAlgorithm(), 'HS256');
+});
+
 test('storage preserves exact user data including whitespace and empty strings', t => {
     setupStorage(t);
     const pairs = [
@@ -63,6 +79,36 @@ test('storage preserves exact user data including whitespace and empty strings',
             assert.equal(LocalStorageUtil[getter](), value, getter);
         }
     }
+});
+
+test('Centrifuge channel lists preserve rows and channel punctuation exactly', t => {
+    const values = setupStorage(t);
+    const channels = ['  channel:one  ', '', 'channel,two', '频道🙂', 'channel\nthree'];
+    LocalStorageUtil.setCentrifugeChannels(channels);
+    assert.equal(values.get('Centrifuge-Channels'), JSON.stringify(channels));
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), channels);
+    const loaded = LocalStorageUtil.getCentrifugeChannels();
+    loaded.push('only in memory');
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), channels);
+});
+
+test('Centrifuge channel lists fall back to the legacy channel and prefer the new setting', t => {
+    const values = setupStorage(t);
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['']);
+    LocalStorageUtil.setCentrifugeChannel('  legacy-channel  ');
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['  legacy-channel  ']);
+    LocalStorageUtil.setCentrifugeChannels(['first-channel', 'second-channel']);
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['first-channel', 'second-channel']);
+    assert.equal(LocalStorageUtil.getCentrifugeChannel(), '  legacy-channel  ');
+    LocalStorageUtil.setCentrifugeChannels(['']);
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['']);
+
+    for (const stored of ['', 'not json', 'null', '{}', '[]', '"channel"', '["valid",42]', '[null]']) {
+        values.set('Centrifuge-Channels', stored);
+        assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['  legacy-channel  '], stored);
+    }
+    values.delete('Centrifuge-Channel');
+    assert.deepEqual(LocalStorageUtil.getCentrifugeChannels(), ['']);
 });
 
 test('a throwing localStorage getter cannot prevent loading or saving preferences', t => {

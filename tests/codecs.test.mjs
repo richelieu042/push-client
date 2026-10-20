@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {brotliCompressSync, gzipSync} from 'node:zlib';
-import {Base64Kit} from '../src/_chimera/crypto/Base64Kit.ts';
-import {GzipKit} from '../src/_chimera/compress/GzipKit.ts';
-import {BrotliKit} from '../src/_chimera/compress/BrotliKit.ts';
-import {ArrayBufferKit} from '../src/_chimera/type/ArrayBufferKit.ts';
-import {Uint8ArrayKit} from '../src/_chimera/type/Uint8ArrayKit.ts';
-import {MsgHandler0} from '../src/_internal/ws/MsgHandler0.ts';
-import {MsgHandler1} from '../src/_internal/ws/MsgHandler1.ts';
-import {MsgHandlerBase64} from '../src/_internal/sse/MsgHandlerBase64.ts';
-import {Console} from '../src/_internal/utils/Console.ts';
+import {Base64Kit} from '../src/chimera/crypto/Base64Kit.ts';
+import {GzipKit} from '../src/chimera/compress/GzipKit.ts';
+import {BrotliKit} from '../src/chimera/compress/BrotliKit.ts';
+import {ArrayBufferKit} from '../src/chimera/type/ArrayBufferKit.ts';
+import {Uint8ArrayKit} from '../src/chimera/type/Uint8ArrayKit.ts';
+import {MsgHandler0} from '../src/internal/ws/MsgHandler0.ts';
+import {MsgHandler1} from '../src/internal/ws/MsgHandler1.ts';
+import {MsgHandlerBase64} from '../src/internal/sse/MsgHandlerBase64.ts';
+import {Console} from '../src/internal/utils/Console.ts';
 
 const text = '你好，push client! 🙂\n';
 const encode = value => new TextEncoder().encode(value);

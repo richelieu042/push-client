@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {defineAsyncComponent, onBeforeUnmount, ref, watch} from 'vue';
-import {Console} from "@/_internal/utils/Console";
-import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
-import {Key} from "@/_internal/consts/key";
+import {Console} from "@/internal/utils/Console";
+import {LocalStorageUtil} from "@/internal/utils/LocalStorageUtil";
+import {Key} from "@/internal/consts/key";
 
 const WebSocket = defineAsyncComponent(() => import("@/components/WebSocket.vue"));
 const SSE = defineAsyncComponent(() => import("@/components/SSE.vue"));

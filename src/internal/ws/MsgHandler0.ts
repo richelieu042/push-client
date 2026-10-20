@@ -1,7 +1,7 @@
-import {Console} from "@/_internal/utils/Console";
-import {GzipKit} from "@/_chimera/compress/GzipKit";
-import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
-import {BlobKit} from "@/_chimera/type/BlobKit";
+import {Console} from "@/internal/utils/Console";
+import {GzipKit} from "@/chimera/compress/GzipKit";
+import {ArrayBufferKit} from "@/chimera/type/ArrayBufferKit";
+import {BlobKit} from "@/chimera/type/BlobKit";
 
 /*
  * 后端推送消息的类型: text || binary(no compress) || binary(gzip)

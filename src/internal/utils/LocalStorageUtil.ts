@@ -1,5 +1,7 @@
-import {LocalStorageKit} from "@/_chimera/browser/LocalStorageKit";
-import {Key} from "@/_internal/consts/key";
+import {LocalStorageKit} from "@/chimera/browser/LocalStorageKit";
+import {Key} from "@/internal/consts/key";
+import {HMAC_ALGORITHMS, isHmacAlgorithm} from "@/internal/consts/jwt";
+import type {HmacAlgorithm} from "@/internal/consts/jwt";
 
 export class LocalStorageUtil {
     static setConnectionType(value: number) {
@@ -100,6 +102,15 @@ export class LocalStorageUtil {
         LocalStorageKit.set("Centrifuge-Protocol", value);
     }
 
+    static getCentrifugeAlgorithm(): HmacAlgorithm {
+        const value = LocalStorageKit.get("Centrifuge-Algorithm");
+        return isHmacAlgorithm(value) ? value : HMAC_ALGORITHMS[0];
+    }
+
+    static setCentrifugeAlgorithm(value: HmacAlgorithm) {
+        LocalStorageKit.set("Centrifuge-Algorithm", value);
+    }
+
     /*
      * Centrifuge-Secret
      */
@@ -140,6 +151,25 @@ export class LocalStorageUtil {
      */
     static setCentrifugeChannel(value: string) {
         LocalStorageKit.set("Centrifuge-Channel", value);
+    }
+
+    static getCentrifugeChannels(): string[] {
+        const stored = LocalStorageKit.get("Centrifuge-Channels");
+        if (stored) {
+            try {
+                const channels: unknown = JSON.parse(stored);
+                if (Array.isArray(channels) && channels.length > 0 && channels.every(channel => typeof channel === "string")) {
+                    return channels;
+                }
+            } catch {
+                // Fall back to the single-channel preference from older versions.
+            }
+        }
+        return [this.getCentrifugeChannel()];
+    }
+
+    static setCentrifugeChannels(value: string[]) {
+        LocalStorageKit.set("Centrifuge-Channels", JSON.stringify(value));
     }
 
     /*

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {WebSocketClient} from '../src/_internal/ws/WebSocketClient.ts';
-import {SseClient} from '../src/_internal/sse/SseClient.ts';
-import {MsgHandler0} from '../src/_internal/ws/MsgHandler0.ts';
-import {MsgHandlerRaw} from '../src/_internal/sse/MsgHandlerRaw.ts';
-import {Console} from '../src/_internal/utils/Console.ts';
-import {LocalStorageUtil} from '../src/_internal/utils/LocalStorageUtil.ts';
+import {WebSocketClient} from '../src/internal/ws/WebSocketClient.ts';
+import {SseClient} from '../src/internal/sse/SseClient.ts';
+import {MsgHandler0} from '../src/internal/ws/MsgHandler0.ts';
+import {MsgHandlerRaw} from '../src/internal/sse/MsgHandlerRaw.ts';
+import {Console} from '../src/internal/utils/Console.ts';
+import {LocalStorageUtil} from '../src/internal/utils/LocalStorageUtil.ts';
 
 function deferred() {
     let resolve;

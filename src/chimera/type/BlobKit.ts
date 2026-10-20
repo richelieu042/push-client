@@ -1,4 +1,4 @@
-import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
+import {ArrayBufferKit} from "@/chimera/type/ArrayBufferKit";
 
 export class BlobKit {
     static toString(blob: Blob): Promise<string> {

@@ -3,12 +3,15 @@ import {EventEmitter} from 'node:events';
 import {afterEach, beforeEach, mock, test} from 'node:test';
 import {Centrifuge} from 'centrifuge';
 import {Centrifuge as ProtobufCentrifuge} from 'centrifuge/build/protobuf';
+import {decodeJwt, jwtVerify} from 'jose';
 
 globalThis.localStorage = {getItem: () => null};
-const {CentrifugeClient} = await import('../src/_internal/centrifuge/CentrifugeClient.ts');
-const {CentrifugeKit} = await import('../src/_chimera/longConnection/CentrifugeKit.ts');
-const {Console} = await import('../src/_internal/utils/Console.ts');
-const {UuidKit} = await import('../src/_chimera/id/UuidKit.ts');
+const {CentrifugeClient} = await import('../src/internal/centrifuge/CentrifugeClient.ts');
+const {CentrifugeKit} = await import('../src/chimera/longConnection/CentrifugeKit.ts');
+const {Console} = await import('../src/internal/utils/Console.ts');
+const {UuidKit} = await import('../src/chimera/id/UuidKit.ts');
+const signToken = CentrifugeKit.genToken.bind(CentrifugeKit);
+const signSubToken = CentrifugeKit.genSubToken.bind(CentrifugeKit);
 
 const endpoints = [{transport: 'websocket', endpoint: 'ws://localhost:8000/connection/websocket'}];
 let clients;
@@ -24,6 +27,18 @@ function deferred() {
     return {promise, resolve, reject};
 }
 
+function newSubscription(channel, options) {
+    if (!clients.includes(this)) {
+        clients.push(this);
+    }
+    const sub = new EventEmitter();
+    sub.subscribe = mock.fn();
+    sub.unsubscribe = mock.fn();
+    sub.options = options;
+    this._subs[channel] = sub;
+    return sub;
+}
+
 beforeEach(() => {
     clients = [];
     errors = [];
@@ -34,8 +49,9 @@ beforeEach(() => {
     CentrifugeClient.client = null;
     CentrifugeClient.debug = false;
     CentrifugeClient.protocol = 'json';
+    CentrifugeClient.algorithm = 'HS256';
     CentrifugeClient.secret = 'test-secret';
-    CentrifugeClient.channel = 'test-channel';
+    CentrifugeClient.channels = ['test-channel'];
     CentrifugeClient.user = 'test-user';
     CentrifugeClient.rpcMethod = 'test-method';
     CentrifugeClient.rpcData = '{"value":1}';
@@ -46,15 +62,7 @@ beforeEach(() => {
     mock.method(CentrifugeKit, 'genToken', async () => 'test-token');
     mock.method(CentrifugeKit, 'genSubToken', async () => 'test-sub-token');
     for (const Client of [Centrifuge, ProtobufCentrifuge]) {
-        mock.method(Client.prototype, 'newSubscription', function (channel, options) {
-            clients.push(this);
-            const sub = new EventEmitter();
-            sub.subscribe = mock.fn();
-            sub.unsubscribe = mock.fn();
-            sub.options = options;
-            this._subs[channel] = sub;
-            return sub;
-        });
+        mock.method(Client.prototype, 'newSubscription', newSubscription);
         mock.method(Client.prototype, 'connect', function () { this.state = 'connected'; });
         mock.method(Client.prototype, 'disconnect', function () {
             this.state = 'disconnected';
@@ -98,6 +106,103 @@ test('normalizes a copied endpoint array and never logs credentials', async () =
     assert.equal(output.some(message => /test-secret|test-token|test-sub-token/.test(message)), false);
 });
 
+for (const [protocol, Client] of [['json', Centrifuge], ['protobuf', ProtobufCentrifuge]]) {
+    test(`${protocol} uses one connection for distinct normalized channels and receives every subscription`, async () => {
+        CentrifugeClient.protocol = protocol;
+        const configuredChannels = [' first-channel ', '', 'second-channel', 'first-channel', '  '];
+        CentrifugeClient.channels = configuredChannels;
+        CentrifugeKit.genSubToken.mock.mockImplementation(signSubToken);
+        await CentrifugeClient.connect(endpoints);
+
+        assert.deepEqual(configuredChannels, [' first-channel ', '', 'second-channel', 'first-channel', '  ']);
+        assert.equal(clients.length, 1);
+        const client = clients[0];
+        assert.ok(client instanceof Client);
+        assert.equal(Client.prototype.connect.mock.callCount(), 1);
+        assert.equal(CentrifugeKit.genToken.mock.callCount(), 1);
+        assert.equal(CentrifugeKit.genSubToken.mock.callCount(), 2);
+        assert.deepEqual(Object.keys(client._subs), ['first-channel', 'second-channel']);
+
+        const tokens = [];
+        for (const [channel, sub] of Object.entries(client._subs)) {
+            assert.equal(sub.subscribe.mock.callCount(), 1);
+            const token = sub.options.token;
+            tokens.push(token);
+            assert.equal(decodeJwt(token).channel, channel);
+            assert.equal(decodeJwt(token).sub, 'test-user');
+            const data = protocol === 'protobuf' ? new TextEncoder().encode(`message from ${channel}`) : {channel};
+            sub.emit('publication', {channel, data});
+            assert.match(output.at(-1), new RegExp(`channel: ${channel}, content`));
+            assert.equal(output.at(-1).includes(protocol === 'protobuf' ? `message from ${channel}` : JSON.stringify(data)), true);
+        }
+        assert.notEqual(tokens[0], tokens[1]);
+        assert.equal(output.some(message => message.includes('test-secret') || tokens.some(token => message.includes(token))), false);
+
+        CentrifugeClient.disconnect(false);
+        assert.equal(Client.prototype.disconnect.mock.callCount(), 1);
+        for (const sub of Object.values(client._subs)) {
+            assert.equal(sub.unsubscribe.mock.callCount(), 1);
+        }
+        const logged = output.length;
+        for (const [channel, sub] of Object.entries(client._subs)) {
+            sub.emit('publication', {channel, data: 'late publication'});
+        }
+        assert.equal(output.length, logged);
+    });
+
+    for (const algorithm of ['HS256', 'HS384', 'HS512']) {
+        test(`${protocol} signs initial and refreshed tokens with the selected ${algorithm} settings snapshot`, async () => {
+            CentrifugeClient.protocol = protocol;
+            CentrifugeClient.algorithm = algorithm;
+            const configuredChannels = ['test-channel', 'second-channel'];
+            CentrifugeClient.channels = configuredChannels;
+            CentrifugeKit.genToken.mock.mockImplementation(signToken);
+            CentrifugeKit.genSubToken.mock.mockImplementation(signSubToken);
+            const pendingToken = deferred();
+            CentrifugeKit.genToken.mock.mockImplementationOnce(async (...args) => {
+                await pendingToken.promise;
+                return signToken(...args);
+            });
+            const connecting = CentrifugeClient.connect(endpoints);
+            CentrifugeClient.algorithm = algorithm === 'HS512' ? 'HS256' : 'HS512';
+            pendingToken.resolve();
+            await connecting;
+            const client = clients[0];
+            configuredChannels.splice(0, configuredChannels.length, 'edited-channel');
+            CentrifugeClient.secret = 'edited-secret';
+            CentrifugeClient.user = 'edited-user';
+
+            const key = new TextEncoder().encode('test-secret');
+            for (const token of [client._token, await client._config.getToken({})]) {
+                const {payload, protectedHeader} = await jwtVerify(token, key, {algorithms: [algorithm]});
+                assert.equal(protectedHeader.alg, algorithm);
+                assert.equal(payload.sub, 'test-user');
+                assert.equal('channel' in payload, false);
+            }
+            assert.deepEqual(CentrifugeKit.genToken.mock.calls.map(call => call.arguments), [
+                [{}, algorithm, 'test-secret', '24h', 'test-user'],
+                [{}, algorithm, 'test-secret', '24h', 'test-user'],
+            ]);
+            for (const [channel, sub] of Object.entries(client._subs)) {
+                for (const token of [sub.options.token, await sub.options.getToken({channel: 'ignored-context-channel'})]) {
+                    const {payload, protectedHeader} = await jwtVerify(token, key, {algorithms: [algorithm]});
+                    assert.equal(protectedHeader.alg, algorithm);
+                    assert.equal(payload.channel, channel);
+                    assert.equal(payload.sub, 'test-user');
+                }
+                assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.at(-1).arguments, [{}, algorithm, 'test-secret', '24h', 'test-user', channel]);
+            }
+            assert.equal(CentrifugeKit.genSubToken.mock.callCount(), 4);
+
+            CentrifugeClient.disconnect(false);
+            for (const sub of Object.values(client._subs)) {
+                assert.equal(await sub.options.getToken({}), '');
+            }
+            assert.equal(CentrifugeKit.genSubToken.mock.callCount(), 4);
+        });
+    }
+}
+
 test('SDK debug logs exclude JWTs while initial authentication stays configured', async () => {
     CentrifugeClient.debug = true;
     await CentrifugeClient.connect(endpoints);
@@ -117,7 +222,12 @@ test('invalid settings preserve an active connection and do not invalidate pendi
         await assert.doesNotReject(CentrifugeClient.connect(invalid));
         assert.equal(CentrifugeClient.client, active);
     }
-    for (const [key, value] of [['secret', ''], ['channel', ' '], ['protocol', 'invalid'], ['user', 42]]) {
+    for (const [key, value] of [
+        ['secret', ''], ['channels', null], ['channels', 'channel'], ['channels', []],
+        ['channels', [' ', '']], ['channels', ['valid', 42]], ['protocol', 'invalid'], ['user', 42],
+        ['algorithm', ''], ['algorithm', 'HS999'], ['algorithm', 'RS256'], ['algorithm', 'none'],
+        ['algorithm', null], ['algorithm', 256],
+    ]) {
         const previous = CentrifugeClient[key];
         CentrifugeClient[key] = value;
         await CentrifugeClient.connect(endpoints);
@@ -167,7 +277,7 @@ test('connection and subscription refresh tokens use the active connection setti
     const client = clients[0];
     CentrifugeClient.secret = 'edited-secret';
     CentrifugeClient.user = 'edited-user';
-    CentrifugeClient.channel = 'edited-channel';
+    CentrifugeClient.channels = ['edited-channel'];
     assert.equal(await client._config.getToken({}), 'test-token');
     assert.equal(await client._subs['test-channel'].options.getToken({channel: 'test-channel'}), 'test-sub-token');
     assert.deepEqual(CentrifugeKit.genToken.mock.calls.at(-1).arguments, [{}, 'HS256', 'test-secret', '24h', 'test-user']);
@@ -253,6 +363,64 @@ test('disconnect cancels pending token generation', async () => {
     assert.equal(CentrifugeClient.getState(), 'null');
 });
 
+test('disconnect cancels preparation while a later subscription token is pending', async () => {
+    CentrifugeClient.channels = ['first-channel', 'second-channel', 'third-channel'];
+    const token = deferred();
+    const started = deferred();
+    CentrifugeKit.genSubToken.mock.mockImplementation(async (...args) => {
+        if (args.at(-1) === 'second-channel') {
+            started.resolve();
+            return token.promise;
+        }
+        return 'first-sub-token';
+    });
+    const connecting = CentrifugeClient.connect(endpoints);
+    await started.promise;
+    CentrifugeClient.disconnect(false);
+    token.resolve('second-sub-token');
+    await connecting;
+    assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.map(call => call.arguments.at(-1)), ['first-channel', 'second-channel']);
+    assert.equal(clients.length, 0);
+    assert.equal(CentrifugeClient.getState(), 'null');
+});
+
+for (const phase of ['subscription token', 'subscription creation']) {
+    test(`a later ${phase} failure cleans up the replacement and preserves the active connection`, async () => {
+        await CentrifugeClient.connect(endpoints);
+        const active = clients[0];
+        CentrifugeClient.channels = ['first-channel', 'second-channel', 'third-channel'];
+        const failure = new Error(`second ${phase} failed`);
+        if (phase === 'subscription token') {
+            CentrifugeKit.genSubToken.mock.mockImplementation(async (...args) => {
+                if (args.at(-1) === 'second-channel') throw failure;
+                return 'sub-token';
+            });
+        } else {
+            Centrifuge.prototype.newSubscription.mock.mockImplementation(function (channel, options) {
+                if (channel === 'second-channel') throw failure;
+                return newSubscription.call(this, channel, options);
+            });
+        }
+
+        await assert.doesNotReject(CentrifugeClient.connect(endpoints));
+        assert.equal(CentrifugeClient.client, active);
+        assert.equal(active.state, 'connected');
+        assert.equal(active._subs['test-channel'].unsubscribe.mock.callCount(), 0);
+        assert.equal(Centrifuge.prototype.connect.mock.callCount(), 1);
+        assert.equal(errors[0][1], failure);
+        if (phase === 'subscription token') {
+            assert.equal(clients.length, 1);
+            assert.equal(Centrifuge.prototype.disconnect.mock.callCount(), 0);
+        } else {
+            assert.equal(clients.length, 2);
+            assert.deepEqual(Object.keys(clients[1]._subs), ['first-channel']);
+            assert.equal(clients[1]._subs['first-channel'].unsubscribe.mock.callCount(), 1);
+            assert.equal(clients[1].state, 'disconnected');
+            assert.equal(Centrifuge.prototype.disconnect.mock.callCount(), 1);
+        }
+    });
+}
+
 test('the most recent connect wins when token preparation overlaps', async () => {
     const firstToken = deferred();
     CentrifugeKit.genToken.mock.mockImplementationOnce(() => firstToken.promise);
@@ -298,12 +466,12 @@ for (const phase of ['constructor', 'newSubscription', 'subscribe', 'connect']) 
 }
 
 test('continues disconnect cleanup when an unsubscribe throws', async () => {
+    CentrifugeClient.channels = ['test-channel', 'second-channel'];
     await CentrifugeClient.connect(endpoints);
     const client = clients[0];
     const failure = new Error('unsubscribe failed');
     client._subs['test-channel'].unsubscribe.mock.mockImplementation(() => { throw failure; });
-    const second = {unsubscribe: mock.fn()};
-    client._subs.second = second;
+    const second = client._subs['second-channel'];
     CentrifugeClient.disconnect(false);
     assert.equal(second.unsubscribe.mock.callCount(), 1);
     assert.equal(Centrifuge.prototype.disconnect.mock.callCount(), 1);
@@ -332,11 +500,12 @@ test('manual disconnect reports the request and ignores subsequent events from t
     assert.equal(CentrifugeClient.getState(), 'null');
 });
 
-test('publish catches asynchronous failures and uses the channel of the active connection', async () => {
+test('publish catches asynchronous failures and uses the first channel of the active connection', async () => {
+    CentrifugeClient.channels = ['test-channel', 'second-channel'];
     await CentrifugeClient.connect(endpoints);
     const failure = new Error('publish rejected');
     Centrifuge.prototype.publish.mock.mockImplementation(async () => { throw failure; });
-    CentrifugeClient.channel = 'edited-channel';
+    CentrifugeClient.channels = ['edited-channel'];
     await assert.doesNotReject(CentrifugeClient.publish(false));
     assert.deepEqual(Centrifuge.prototype.publish.mock.calls[0].arguments, ['test-channel', false]);
     assert.equal(errors[0][1], failure);

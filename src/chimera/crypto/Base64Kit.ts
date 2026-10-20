@@ -1,6 +1,6 @@
 import {fromByteArray, toByteArray} from "base64-js";
-import {Uint8ArrayKit} from "@/_chimera/type/Uint8ArrayKit";
-import {StringKit} from "@/_chimera/type/StringKit";
+import {Uint8ArrayKit} from "@/chimera/type/Uint8ArrayKit";
+import {StringKit} from "@/chimera/type/StringKit";
 
 export class Base64Kit {
     /*

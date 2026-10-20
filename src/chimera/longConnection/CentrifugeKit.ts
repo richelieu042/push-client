@@ -1,4 +1,4 @@
-import {JwtKit} from "@/_chimera/jwt/JwtKit";
+import {JwtKit} from "@/chimera/jwt/JwtKit";
 import type {JWTPayload} from "jose";
 
 export class CentrifugeKit {

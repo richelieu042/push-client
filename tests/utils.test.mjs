@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {Console} from '../src/_internal/utils/Console.ts';
-import {LocalStorageKit} from '../src/_chimera/browser/LocalStorageKit.ts';
-import {LocalStorageUtil} from '../src/_internal/utils/LocalStorageUtil.ts';
+import {Console} from '../src/internal/utils/Console.ts';
+import {LocalStorageKit} from '../src/chimera/browser/LocalStorageKit.ts';
+import {LocalStorageUtil} from '../src/internal/utils/LocalStorageUtil.ts';
 
 function setupConsole(t) {
     const output = {value: ''}, errors = [], logs = [];

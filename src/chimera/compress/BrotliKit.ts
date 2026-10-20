@@ -1,6 +1,6 @@
-import {Uint8ArrayKit} from "@/_chimera/type/Uint8ArrayKit";
-import {BlobKit} from "@/_chimera/type/BlobKit";
-import {ArrayBufferKit} from "@/_chimera/type/ArrayBufferKit";
+import {Uint8ArrayKit} from "@/chimera/type/Uint8ArrayKit";
+import {BlobKit} from "@/chimera/type/BlobKit";
+import {ArrayBufferKit} from "@/chimera/type/ArrayBufferKit";
 
 /*
  * 需要安装第三方库，命令: npm install brotli

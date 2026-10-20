@@ -1,5 +1,5 @@
 import {type Ref} from "vue";
-import {TimeKit} from "@/_chimera/time/TimeKit";
+import {TimeKit} from "@/chimera/time/TimeKit";
 
 export class Console {
     static readonly maxOutputLength = 200_000;

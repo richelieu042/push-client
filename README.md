@@ -53,6 +53,11 @@ Sending is refused when the message would take the browser's outgoing buffer abo
 retry after the connection catches up. Normal remote closure finishes displaying already received messages.
 
 Centrifuge connection and subscription JWTs renew automatically when the server requests a refresh.
+Choose **token_algorithm** to sign with HS256 (default), HS384, or HS512. The selection is saved locally
+and applies to connection and subscription tokens on the next **Connect**.
+Use **Add channel** to subscribe to multiple channels over the same connection, then click **Connect**
+to apply the list. Channel names are trimmed, empty rows are ignored, and duplicate names are subscribed
+only once. The channel list is saved locally; existing single-channel preferences are retained.
 Renewal uses the settings from the active connection. Invalid configuration or token preparation failure
 preserves the current connection. Replaced clients release their global network listeners.
 URL fields also accept Enter to connect, and URL schemes are case insensitive.

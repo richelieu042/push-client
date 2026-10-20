@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import {WebSocketClient} from "@/_internal/ws/WebSocketClient";
+import {WebSocketClient} from "@/internal/ws/WebSocketClient";
 import {onBeforeUnmount, onMounted, ref, watch} from 'vue';
-import {LocalStorageUtil} from "@/_internal/utils/LocalStorageUtil";
-import {Console} from "@/_internal/utils/Console";
-import {Key} from "@/_internal/consts/key";
-import {submitOnEnter} from "@/_internal/utils/Keyboard";
+import {LocalStorageUtil} from "@/internal/utils/LocalStorageUtil";
+import {Console} from "@/internal/utils/Console";
+import {Key} from "@/internal/consts/key";
+import {submitOnEnter} from "@/internal/utils/Keyboard";
 
 const initialUrl = LocalStorageUtil.getWsUrl();
 const initialPushMessageType = LocalStorageUtil.getWsPushMessageType();
