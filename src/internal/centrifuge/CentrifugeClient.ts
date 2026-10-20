@@ -90,13 +90,13 @@ export class CentrifugeClient {
             const user = isEmpty(this.user) ? UuidKit.v4() : this.user;
             const emulationEndpoint = this.getEmulationEndpoint(transportEndpoints);
             attempt = ++this.connectionAttempt;
-            const connectToken = await CentrifugeKit.genToken({}, algorithm, secret, "24h", user);
+            const connectToken = await CentrifugeKit.genToken({}, algorithm, secret, "1h", user);
             if (attempt !== this.connectionAttempt) {
                 return;
             }
             const subscriptionTokens: Array<{ channel: string; token: string }> = [];
             for (const channel of activeChannels) {
-                const token = await CentrifugeKit.genSubToken({}, algorithm, secret, "24h", user, channel);
+                const token = await CentrifugeKit.genSubToken({}, algorithm, secret, "1h", user, channel);
                 if (attempt !== this.connectionAttempt) {
                     return;
                 }
@@ -115,8 +115,8 @@ export class CentrifugeClient {
                 }
                 try {
                     const token = channel !== undefined
-                        ? await CentrifugeKit.genSubToken({}, algorithm, secret, "24h", user, channel)
-                        : await CentrifugeKit.genToken({}, algorithm, secret, "24h", user);
+                        ? await CentrifugeKit.genSubToken({}, algorithm, secret, "1h", user, channel)
+                        : await CentrifugeKit.genToken({}, algorithm, secret, "1h", user);
                     return this.client === createdClient ? token : "";
                 } catch (error) {
                     Console.error(`[client-error] Failed to refresh ${channel !== undefined ? `subscription "${channel}"` : "connection"} token`, error, this.client === createdClient);

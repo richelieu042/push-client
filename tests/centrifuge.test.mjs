@@ -178,10 +178,11 @@ for (const [protocol, Client] of [['json', Centrifuge], ['protobuf', ProtobufCen
                 assert.equal(protectedHeader.alg, algorithm);
                 assert.equal(payload.sub, 'test-user');
                 assert.equal('channel' in payload, false);
+                assert.equal(payload.exp - payload.iat, 60 * 60);
             }
             assert.deepEqual(CentrifugeKit.genToken.mock.calls.map(call => call.arguments), [
-                [{}, algorithm, 'test-secret', '24h', 'test-user'],
-                [{}, algorithm, 'test-secret', '24h', 'test-user'],
+                [{}, algorithm, 'test-secret', '1h', 'test-user'],
+                [{}, algorithm, 'test-secret', '1h', 'test-user'],
             ]);
             for (const [channel, sub] of Object.entries(client._subs)) {
                 for (const token of [sub.options.token, await sub.options.getToken({channel: 'ignored-context-channel'})]) {
@@ -189,8 +190,9 @@ for (const [protocol, Client] of [['json', Centrifuge], ['protobuf', ProtobufCen
                     assert.equal(protectedHeader.alg, algorithm);
                     assert.equal(payload.channel, channel);
                     assert.equal(payload.sub, 'test-user');
+                    assert.equal(payload.exp - payload.iat, 60 * 60);
                 }
-                assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.at(-1).arguments, [{}, algorithm, 'test-secret', '24h', 'test-user', channel]);
+                assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.at(-1).arguments, [{}, algorithm, 'test-secret', '1h', 'test-user', channel]);
             }
             assert.equal(CentrifugeKit.genSubToken.mock.callCount(), 4);
 
@@ -280,8 +282,8 @@ test('connection and subscription refresh tokens use the active connection setti
     CentrifugeClient.channels = ['edited-channel'];
     assert.equal(await client._config.getToken({}), 'test-token');
     assert.equal(await client._subs['test-channel'].options.getToken({channel: 'test-channel'}), 'test-sub-token');
-    assert.deepEqual(CentrifugeKit.genToken.mock.calls.at(-1).arguments, [{}, 'HS256', 'test-secret', '24h', 'test-user']);
-    assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.at(-1).arguments, [{}, 'HS256', 'test-secret', '24h', 'test-user', 'test-channel']);
+    assert.deepEqual(CentrifugeKit.genToken.mock.calls.at(-1).arguments, [{}, 'HS256', 'test-secret', '1h', 'test-user']);
+    assert.deepEqual(CentrifugeKit.genSubToken.mock.calls.at(-1).arguments, [{}, 'HS256', 'test-secret', '1h', 'test-user', 'test-channel']);
     CentrifugeClient.disconnect(false);
     assert.equal(await client._config.getToken({}), '');
     assert.equal(await client._subs['test-channel'].options.getToken({channel: 'test-channel'}), '');

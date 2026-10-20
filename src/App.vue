@@ -58,6 +58,6 @@ watch(connectionType, (newVal, oldVal) => {
 .console-output {
   width: 100%;
   max-width: 1600px;
-  height: 380px;
+  height: 260px;
 }
 </style>

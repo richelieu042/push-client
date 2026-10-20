@@ -52,7 +52,8 @@ Exceeding either limit reports an error, discards pending messages, and closes t
 Sending is refused when the message would take the browser's outgoing buffer above 8 MiB;
 retry after the connection catches up. Normal remote closure finishes displaying already received messages.
 
-Centrifuge connection and subscription JWTs renew automatically when the server requests a refresh.
+Centrifuge connection and subscription JWTs are valid for 1 hour, including newly issued refresh tokens.
+They renew automatically when the server requests a refresh.
 Choose **token_algorithm** to sign with HS256 (default), HS384, or HS512. The selection is saved locally
 and applies to connection and subscription tokens on the next **Connect**.
 Use **Add channel** to subscribe to multiple channels over the same connection, then click **Connect**
